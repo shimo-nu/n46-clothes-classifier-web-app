@@ -13,8 +13,17 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "blueimp-load-image": "^5.16.0",
+    "ndarray": "^1.0.19",
+    "ndarray-ops": "^1.2.2",
+    "ndarray-resample": "^1.0.1",
+    "ndarray-squeeze": "^1.0.2",
+    "ndarray-unpack": "^1.0.0",
+    "onnxruntime-web": "^1.18.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.29",
+    "vue-class-component": "^8.0.0-rc.1",
+    "vue-facing-decorator": "^3.0.4",
     "vue-router": "^4.3.3"
   },
   "devDependencies": {
