@@ -4,7 +4,10 @@ import {Tensor} from 'onnxruntime-web';
 
 import classNames from '../data/yolo_classes';
 
-import * as yolo from './utils-yolo/yoloPostprocess';
+import {NumberDataType, Type} from './utils-yolo/yoloPostprocess';
+
+
+// import * as yolo from './utils-yolo/yoloPostprocess';
 
 export const YOLO_ANCHORS = new Tensor(
     'float32', Float32Array.from([

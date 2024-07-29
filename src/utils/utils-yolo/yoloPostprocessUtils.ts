@@ -1,6 +1,6 @@
 import ndarray from 'ndarray';
 
-import {NumberDataType, Type} from './yoloPostprocess';
+import {NumberDataType, Type} from '../utils-yolo/yoloPostprocess';
 
 export class BroadcastUtil {
   /**

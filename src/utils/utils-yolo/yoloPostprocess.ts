@@ -9,10 +9,13 @@ import * as unaryOps from './unary-op';
 import {ShapeUtil, TypedArrayUtil, TypeUtil} from './yoloPostprocessUtils';
 
 // Types
-export type Type = Tensor.Type;  //'string'|'int32'|'float32'|'bool';
-export type NumberType = 'int32'|'float32';
-export type NumberOrBoolType = 'int32'|'float32'|'bool';
-export type NumberDataType = Uint8Array|Int32Array|Float32Array;
+// yoloPostprocess.ts
+type Type = Tensor.Type;  //'string'|'int32'|'float32'|'bool';
+type NumberType = 'int32'|'float32';
+type NumberOrBoolType = 'int32'|'float32'|'bool';
+type NumberDataType = Uint8Array | Int32Array | Float32Array;
+
+export type {Type, NumberType, NumberOrBoolType, NumberDataType};
 
 // Utility Tensor Creators
 export function as1D(t: Tensor): Tensor {

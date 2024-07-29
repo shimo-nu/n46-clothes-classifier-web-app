@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import WebcamUI from './components/common/WebcamUI.vue'
+import Yolo from './views/Yolo.vue'
 </script>
 
 <template>
 
   <div><h1>乃木坂衣装識別</h1></div>
-  <WebcamUI />
+  <Yolo />
 
 </template>
 
