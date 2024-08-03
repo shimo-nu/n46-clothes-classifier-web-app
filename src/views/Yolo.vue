@@ -2,9 +2,13 @@
   <div id="app">
     <h1>Camera and Image Upload Example</h1>
     <CameraComponent @image-uploaded="handleImageUploaded"/>
-    <canvas ref="inputCanvas" id="inputCanvas"></canvas>
+    <div ref="webcam-container" id="webcam-container" style="position: relative;">
+      <canvas ref="inputCanvas" id="inputCanvas"></canvas>
+      <div ref="outputContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+    </div>
   </div>
 </template>
+
 
 <script lang="ts">
 import { defineComponent, onMounted, ref } from 'vue';
@@ -15,7 +19,7 @@ import { runModelUtils, yolo, yoloTransforms } from '../utils/index';
 import CameraComponent from '../components/common/WebcamUI.vue';
 
 
-const MODEL_FILEPATH = '/data/yolo.onnx';
+const MODEL_FILEPATH = '/data/best.onnx';
 
 export default defineComponent({
   name: 'App',
@@ -34,16 +38,16 @@ export default defineComponent({
       const response = await fetch(MODEL_FILEPATH);
       const modelFile = await response.arrayBuffer();
       session.value = await runModelUtils.createModelCpu(modelFile)
-      await runModelUtils.warmupModel(session.value, [1, 3, 416, 416]);
+      await runModelUtils.warmupModel(session.value, [1, 3, 640, 640]);
       console.log(session.value);
     };
 
     onMounted(() => {
       console.log("onMounted");
-      inputCanvas.value = document.createElement('canvas');
-      outputContainer.value = document.createElement('div');
-      document.body.appendChild(inputCanvas.value);
-      document.body.appendChild(outputContainer.value);
+      // inputCanvas.value = document.createElement('canvas');
+      // outputContainer.value = document.createElement('div');
+      // document.body.appendChild(inputCanvas.value);
+      // document.body.appendChild(outputContainer.value);
     });
 
     const handleImageUploaded = async (imageData: string) => {
@@ -57,15 +61,15 @@ export default defineComponent({
       const img = new Image();
       img.onload = async () => {
         console.log("image loaded");
-        inputCanvas.value!.width = 416;
-        inputCanvas.value!.height = 416;
+        inputCanvas.value!.width = 640;
+        inputCanvas.value!.height = 640;
         const ctx = inputCanvas.value!.getContext('2d');
         if (ctx) {
-          ctx.drawImage(img, 0, 0, 416, 416);
+          ctx.drawImage(img, 0, 0, 640, 640);
           const tensor = preprocess(ctx);
-          const output = await session.value!.run({ "image": tensor });
-          await postprocess(output.grid, performance.now());
-          console.log("process end");
+          const output = await session.value!.run({ "images": tensor });
+          console.log(output);
+          await postprocess(output.output0, performance.now());
         }
       };
       img.src = imageData;
@@ -99,16 +103,27 @@ export default defineComponent({
     };
 
     const postprocess = async (tensor: Tensor, inferenceTime: number) => {
+      if (outputContainer.value) {
+        outputContainer.value.innerHTML = '';
+      }
+
       console.log(tensor);
+
       const originalOutput = new Tensor('float32', tensor.data as Float32Array, [1, 125, 13, 13]);
       const outputTensor = yoloTransforms.transpose(originalOutput, [0, 2, 3, 1]);
 
       const boxes = await yolo.postprocess(outputTensor, 20);
       boxes.forEach((box) => {
         const { top, left, bottom, right, classProb, className } = box;
+         const webcamContainerElement = document.getElementById("webcam-container") as HTMLElement;
+        // Depending on the display size, webcamContainerElement might be smaller than 640x640.
+        var [ox, oy] = [(webcamContainerElement.offsetWidth - 640) / 2, (webcamContainerElement.offsetHeight - 640) / 2];
+        console.log(ox, oy);
+        ox = 0;
+        oy = 0;
         drawRect(
-          left,
-          top,
+          left - ox, 
+          top - oy,
           right - left,
           bottom - top,
           `${className} Confidence: ${Math.round(classProb * 100)}% Time: ${inferenceTime.toFixed(1)}ms`
@@ -138,4 +153,16 @@ export default defineComponent({
 </script>
 
 <style>
+#webcam-container {
+  position: relative;
+}
+
+#inputCanvas {
+  z-index: 1;
+}
+
+[ref="outputContainer"] {
+  z-index: 2;
+}
+
 </style>
