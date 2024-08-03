@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="webcam-component">
     <video ref="videoElement" autoplay></video>
     <button @click="startCamera">Start Camera</button>
     <button @click="stopCamera">Stop Camera</button>
@@ -109,5 +109,9 @@ img {
   transition: 0.3s cubic-bezier(0.25, 0.8, 0.5, 1), color 1ms;
   justify-content: center;
   padding: 0 16px;
+}
+
+.webcam-component {
+  margin:10px;
 }
 </style>
