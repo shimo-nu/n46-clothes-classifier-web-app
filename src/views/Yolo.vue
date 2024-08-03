@@ -2,41 +2,20 @@
   <div id="app">
     <h1>Camera and Image Upload Example</h1>
     <CameraComponent @image-uploaded="handleImageUploaded"/>
+    <canvas ref="inputCanvas" id="inputCanvas"></canvas>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, onMounted, ref } from 'vue';
 import { Tensor, InferenceSession } from 'onnxruntime-web';
 import ndarray from 'ndarray';
 import ops from 'ndarray-ops';
 import { runModelUtils, yolo, yoloTransforms } from '../utils/index';
 import CameraComponent from '../components/common/WebcamUI.vue';
-// import {NumberDataType, Type} from '../utils/utils-yolo/yoloPostprocess.ts';
 
 
-
-const MODEL_FILEPATH = './data/best.onnx';
-
-export function arrayCopyHelper(
-    target: NumberDataType, source: NumberDataType, targetIndex: number, sourceIndex: number, blockSize: number) {
-  if (sourceIndex < 0 || sourceIndex >= source.length) {
-    throw new Error(`sourceIndex out of bounds`);
-  }
-  if (targetIndex < 0 || targetIndex >= target.length) {
-    throw new Error(`targetIndex out of bounds`);
-  }
-  if (sourceIndex + blockSize > source.length) {
-    throw new Error(`source indices to be copied are outside bounds`);
-  }
-  if (targetIndex + blockSize > target.length) {
-    throw new Error(`target array is too small to hold result`);
-  }
-
-  for (let offset = 0; offset < blockSize; offset++) {
-    target[targetIndex + offset] = source[sourceIndex + offset];
-  }
-}
+const MODEL_FILEPATH = '/data/yolo.onnx';
 
 export default defineComponent({
   name: 'App',
@@ -46,34 +25,53 @@ export default defineComponent({
   setup() {
     const inputCanvas = ref<HTMLCanvasElement | null>(null);
     const outputContainer = ref<HTMLDivElement | null>(null);
-    const session = ref<InferenceSession | null>(null);
+    var session = ref<InferenceSession | null>(null);
+
+    
 
     const loadModel = async () => {
-      session.value = await InferenceSession.create(MODEL_FILEPATH);
+      console.log("loadModel");
+      const response = await fetch(MODEL_FILEPATH);
+      const modelFile = await response.arrayBuffer();
+      session.value = await runModelUtils.createModelCpu(modelFile)
       await runModelUtils.warmupModel(session.value, [1, 3, 416, 416]);
+      console.log(session.value);
     };
 
-    const handleImageUploaded = async (imageData: string) => {
-      if (!inputCanvas.value || !session.value) return;
+    onMounted(() => {
+      console.log("onMounted");
+      inputCanvas.value = document.createElement('canvas');
+      outputContainer.value = document.createElement('div');
+      document.body.appendChild(inputCanvas.value);
+      document.body.appendChild(outputContainer.value);
+    });
 
+    const handleImageUploaded = async (imageData: string) => {
+      console.log("image uploaded");
+      if (!session.value) {
+        console.log("session.value is null");
+          return;
+      }
+      console.log("process start");
       // Load the image into the canvas
       const img = new Image();
       img.onload = async () => {
+        console.log("image loaded");
         inputCanvas.value!.width = 416;
         inputCanvas.value!.height = 416;
         const ctx = inputCanvas.value!.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, 416, 416);
           const tensor = preprocess(ctx);
-          console.log(tensor)
-          // const output = await session.value!.run({ input: tensor });
-          // await postprocess(output.output, performance.now());
+          const output = await session.value!.run({ "image": tensor });
+          await postprocess(output.grid, performance.now());
+          console.log("process end");
         }
       };
       img.src = imageData;
     };
 
-
+  
     const preprocess = (ctx: CanvasRenderingContext2D): Tensor => {
       const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
       const { data, width, height } = imageData;
@@ -101,6 +99,7 @@ export default defineComponent({
     };
 
     const postprocess = async (tensor: Tensor, inferenceTime: number) => {
+      console.log(tensor);
       const originalOutput = new Tensor('float32', tensor.data as Float32Array, [1, 125, 13, 13]);
       const outputTensor = yoloTransforms.transpose(originalOutput, [0, 2, 3, 1]);
 
