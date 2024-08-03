@@ -21,11 +21,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onBeforeUnmount } from 'vue';
+import { defineComponent, ref, onBeforeUnmount, toRefs} from 'vue';
 
 export default defineComponent({
   name: 'CameraComponent',
-  setup() {
+  emits: ['image-uploaded'],
+  setup(props, { emit }) {
     const videoElement = ref<HTMLVideoElement | null>(null);
     const videoStream = ref<MediaStream | null>(null);
     const imageUrl = ref<string | null>(null);
@@ -56,8 +57,11 @@ export default defineComponent({
       const input = e.target as HTMLInputElement;
       if (input.files && input.files[0]) {
         const reader = new FileReader();
+        console.log("image=uploaed");
         reader.onload = (event) => {
-          imageUrl.value = event.target?.result as string;
+          const result = event.target?.result as string;
+          // imageUrl.value = result;
+          emit('image-uploaded', result);
         };
         reader.readAsDataURL(input.files[0]);
       }
@@ -72,7 +76,7 @@ export default defineComponent({
       startCamera,
       stopCamera,
       handleFileChange,
-      imageUrl,
+      ...toRefs({ videoElement, imageUrl }),
     };
   },
 });
