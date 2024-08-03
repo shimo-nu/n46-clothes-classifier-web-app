@@ -25,6 +25,10 @@
     "outDir": "dist",  // 出力先ディレクトリ
     "rootDir": "src"  // ソースコードのルートディレクトリ
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules", 
+    "src/common"
+  ]
   
 }
