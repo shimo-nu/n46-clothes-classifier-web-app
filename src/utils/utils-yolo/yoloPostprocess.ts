@@ -347,6 +347,25 @@ export function cast(t: Tensor, dtype: Type): Tensor {
   }
 }
 
+export function squeeze(t: Tensor, axis?: number): Tensor {
+  let newDims: number[] = [];
+  const dims = t.dims ? t.dims : [t.data.length];
+
+  if (axis !== undefined) {
+    // 特定の軸を削除
+    if (dims[axis] !== 1) {
+      throw new Error(`Cannot squeeze axis ${axis} of shape ${dims} because its size is not 1`);
+    }
+    newDims = dims.filter((_, i) => i !== axis);
+  } else {
+    // 全ての1次元の軸を削除
+    newDims = dims.filter(dim => dim !== 1);
+  }
+
+  return new Tensor(t.type, t.data, newDims);
+}
+
+
 export function reshape(t: Tensor, dims: ReadonlyArray<number>): Tensor {
   return reshapeImpl(t, dims);
 }
