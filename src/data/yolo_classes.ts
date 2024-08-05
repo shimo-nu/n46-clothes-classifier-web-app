@@ -7,3 +7,8 @@ export default [
   '33_uniform', '34_uniform', '35_uniform', '3_uniform', '4_uniform', 
   '5_uniform', '6_uniform', '7_uniform', '8_uniform', '9_uniform'
 ];
+
+// export default [
+//   'Aeroplane',   'Bicycle', 'Bird',  'Boat',      'Bottle', 'Bus',         'Car',   'Cat',  'Chair', 'Cow',
+//   'Diningtable', 'Dog',     'Horse', 'Motorbike', 'Person', 'Pottedplant', 'Sheep', 'Sofa', 'Train', 'Tvmonitor'
+// ];
