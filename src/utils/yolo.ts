@@ -8,6 +8,8 @@ import {NumberDataType, Type} from './utils-yolo/yoloPostprocess';
 
 
 import * as yolo from './utils-yolo/yoloPostprocess';
+import { c } from 'vite/dist/node/types.d-aGj9QkWt';
+import { yoloTransforms } from '.';
 
 export const YOLO_ANCHORS = new Tensor(
     'float32', Float32Array.from([
@@ -26,68 +28,161 @@ export const YOLO_ANCHORS = new Tensor(
 const DEFAULT_FILTER_BOXES_THRESHOLD = 0.01;
 const DEFAULT_IOU_THRESHOLD = 0.4;
 const DEFAULT_CLASS_PROB_THRESHOLD = 0.3;
-const INPUT_DIM = 416;
+const INPUT_DIM = 640;
 
-export async function postprocess(outputTensor: Tensor, numClasses: number) {
-  const [boxXy, boxWh, boxConfidence, boxClassProbs] = yolo_head(outputTensor, YOLO_ANCHORS, 20);
-  const allBoxes = yolo_boxes_to_corners(boxXy, boxWh);
-  const [outputBoxes, scores, classes] =
-      await yolo_filter_boxes(allBoxes, boxConfidence, boxClassProbs, DEFAULT_FILTER_BOXES_THRESHOLD);
-  // If all boxes have been filtered out
-  if (outputBoxes == null) {
-    return [];
+export async function postprocess(outputs: Tensor, numClasses: number) {
+  var boxes_a = [];
+  var scores = [];
+  var class_ids = [];
+  console.log(outputs.dims);
+  // const outputTensor = yolo.reshape(outputs, [outputs.dims[2], outputs.dims[1]]);
+  var outputTensor = yoloTransforms.transpose(outputs, [0, 2, 1]);
+
+  outputTensor = yoloTransforms.squeeze(outputTensor);  
+  
+
+
+  const rows = outputTensor.dims[0];
+  const xFactor = yolo.scalar(INPUT_DIM);
+  const yFactor = yolo.scalar(INPUT_DIM);
+
+  var maxScore_ = -1;
+
+  for (let i = 0; i < rows; i++) {
+    const classScores = yolo.slice(outputTensor, [i, 4], [1, numClasses]);
+    const maxScore = yolo.max(classScores, 1);
+    const classId = yolo.argMax(classScores, 1);
+    if (i == 0) {
+      console.log(outputTensor)
+      console.log(classScores);
+      console.log(maxScore);
+      console.log(maxScore.data);
+      console.log(maxScore.data[0]);
+      console.log(classId);
+      console.log(classId.data);
+      console.log(classId.data[0]);
+    }
+    if (maxScore.data[0] > maxScore_) {
+      maxScore_ = maxScore.data[0];
+    }
+    if (maxScore.data[0] >= DEFAULT_CLASS_PROB_THRESHOLD) {
+      const [x, y, w, h] = yolo.slice(outputTensor, [i, 0], [1, 4]).data;
+      const left = Math.floor((x - w / 2) * xFactor);
+      const top = Math.floor((y - h / 2) * yFactor);
+      const width = Math.floor(w * xFactor);
+      const height = Math.floor(h * yFactor);
+
+      class_ids.push(classId);
+      scores.push(maxScore);
+      boxes_a.push([left, top, width, height]);
+    }
   }
 
-  const width = yolo.scalar(INPUT_DIM);
-  const height = yolo.scalar(INPUT_DIM);
-
-  const imageDims = yolo.reshape(yolo.stack([height, width, height, width]), [
+  console.log(maxScore_);
+  const imageDims = yolo.reshape(yolo.stack([yFactor, xFactor, yFactor, xFactor]), [
     1,
     4,
   ]);
 
-  const boxes: Tensor = yolo.mul(outputBoxes, imageDims);
+  const boxesTensor = new Tensor('float32', boxes_a.flat(), [boxes_a.length, 4]);
+  const scoresTensor = new Tensor('float32', scores, [scores.length, 1]);
+
+  const boxes: Tensor = yolo.mul(boxesTensor, imageDims);
+
 
   const [preKeepBoxesArr, scoresArr] = await Promise.all([
     boxes.data,
-    scores.data,
+    scoresTensor.data,
   ]);
-
   const [keepIndx, boxesArr, keepScores] = non_max_suppression(
-      preKeepBoxesArr as Float32Array | Int32Array | Uint8Array, scoresArr as Float32Array | Int32Array | Uint8Array,
-      DEFAULT_IOU_THRESHOLD);
+    preKeepBoxesArr as Float32Array | Int32Array | Uint8Array, scoresArr as Float32Array | Int32Array | Uint8Array,
+    DEFAULT_IOU_THRESHOLD);
 
-  const classesIndxArr = (await yolo.gather(classes, new Tensor('int32', keepIndx)).data) as Float32Array;
-
-  const results: any[] = [];
-
-  classesIndxArr.forEach((classIndx, i) => {
+  const results = [];
+  console.log(preKeepBoxesArr);
+  console.log(keepIndx);
+  for (let i = 0; i < keepIndx.length; i++) {
+    const box = boxesArr.slice(i * 4, i * 4 + 4);
     const classProb = keepScores[i];
+    const className = classNames[class_ids[keepIndx[i]]];
+
     if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
       return;
     }
 
-    const className = classNames[classIndx];
-    let [top, left, bottom, right] = boxesArr[i];
-
-    top = Math.max(0, top);
-    left = Math.max(0, left);
-    bottom = Math.min(416, bottom);
-    right = Math.min(416, right);
-
-    const resultObj = {
-      className,
-      classProb,
-      bottom,
-      top,
-      left,
-      right,
-    };
-
-    results.push(resultObj);
-  });
-  return results;
+    results.push({
+      top: box[0],
+      left: box[1],
+      bottom: box[2],
+      right: box[3],
+      classProb: classProb,
+      className: className,
+    });
+    }
+  
+    return results;
 }
+
+// export async function postprocess(outputTensor: Tensor, numClasses: number) {
+//   const [boxXy, boxWh, boxConfidence, boxClassProbs] = yolo_head(outputTensor, YOLO_ANCHORS, numClasses);
+//   const allBoxes = yolo_boxes_to_corners(boxXy, boxWh);
+//   const [outputBoxes, scores, classes] =
+//       await yolo_filter_boxes(allBoxes, boxConfidence, boxClassProbs, DEFAULT_FILTER_BOXES_THRESHOLD);
+//   // If all boxes have been filtered out
+//   if (outputBoxes == null) {
+//     return [];
+//   }
+
+//   const width = yolo.scalar(INPUT_DIM);
+//   const height = yolo.scalar(INPUT_DIM);
+
+//   const imageDims = yolo.reshape(yolo.stack([height, width, height, width]), [
+//     1,
+//     4,
+//   ]);
+
+//   const boxes: Tensor = yolo.mul(outputBoxes, imageDims);
+
+//   const [preKeepBoxesArr, scoresArr] = await Promise.all([
+//     boxes.data,
+//     scores.data,
+//   ]);
+
+//   const [keepIndx, boxesArr, keepScores] = non_max_suppression(
+//       preKeepBoxesArr as Float32Array | Int32Array | Uint8Array, scoresArr as Float32Array | Int32Array | Uint8Array,
+//       DEFAULT_IOU_THRESHOLD);
+
+//   const classesIndxArr = (await yolo.gather(classes, new Tensor('int32', keepIndx)).data) as Float32Array;
+
+//   const results: any[] = [];
+
+//   classesIndxArr.forEach((classIndx, i) => {
+//     const classProb = keepScores[i];
+//     if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
+//       return;
+//     }
+
+//     const className = classNames[classIndx];
+//     let [top, left, bottom, right] = boxesArr[i];
+
+//     top = Math.max(0, top);
+//     left = Math.max(0, left);
+//     bottom = Math.min(416, bottom);
+//     right = Math.min(416, right);
+
+//     const resultObj = {
+//       className,
+//       classProb,
+//       bottom,
+//       top,
+//       left,
+//       right,
+//     };
+
+//     results.push(resultObj);
+//   });
+//   return results;
+// }
 
 export async function yolo_filter_boxes(
     boxes: Tensor, boxConfidence: Tensor, boxClassProbs: Tensor, threshold: number) {
