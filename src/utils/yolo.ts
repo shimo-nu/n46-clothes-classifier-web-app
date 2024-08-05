@@ -26,8 +26,8 @@ export const YOLO_ANCHORS = new Tensor(
     ]),
     [5, 2]);
 const DEFAULT_FILTER_BOXES_THRESHOLD = 0.01;
-const DEFAULT_IOU_THRESHOLD = 0.4;
-const DEFAULT_CLASS_PROB_THRESHOLD = 0.3;
+const DEFAULT_IOU_THRESHOLD = 0.3;
+const DEFAULT_CLASS_PROB_THRESHOLD = 0.5;
 const INPUT_DIM = 640;
 
 export async function postprocess(outputs: Tensor, numClasses: number) {
@@ -46,7 +46,7 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
   const xFactor = yolo.scalar(INPUT_DIM);
   const yFactor = yolo.scalar(INPUT_DIM);
 
-  var maxScore_ = -1;
+  let maxScore_ = -1;
 
   for (let i = 0; i < rows; i++) {
     const classScores = yolo.slice(outputTensor, [i, 4], [1, numClasses]);
@@ -67,60 +67,97 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
     }
     if (maxScore.data[0] >= DEFAULT_CLASS_PROB_THRESHOLD) {
       const [x, y, w, h] = yolo.slice(outputTensor, [i, 0], [1, 4]).data;
-      const left = Math.floor((x - w / 2) * xFactor);
-      const top = Math.floor((y - h / 2) * yFactor);
-      const width = Math.floor(w * xFactor);
-      const height = Math.floor(h * yFactor);
 
-      class_ids.push(classId);
-      scores.push(maxScore);
+      const left = Math.floor((x - w / 2) * 1);
+      const top = Math.floor((y - h / 2) * 1);
+      const width = Math.floor(w * 1);
+      const height = Math.floor(h * 1);
+
+      class_ids.push(classId.data[0]);
+      scores.push(maxScore.data[0]);
       boxes_a.push([left, top, width, height]);
     }
   }
 
-  console.log(maxScore_);
-  const imageDims = yolo.reshape(yolo.stack([yFactor, xFactor, yFactor, xFactor]), [
-    1,
-    4,
-  ]);
+  console.log(class_ids);
+  console.log(boxes_a);
 
-  const boxesTensor = new Tensor('float32', boxes_a.flat(), [boxes_a.length, 4]);
-  const scoresTensor = new Tensor('float32', scores, [scores.length, 1]);
-
-  const boxes: Tensor = yolo.mul(boxesTensor, imageDims);
-
-
-  const [preKeepBoxesArr, scoresArr] = await Promise.all([
-    boxes.data,
-    scoresTensor.data,
-  ]);
-  const [keepIndx, boxesArr, keepScores] = non_max_suppression(
-    preKeepBoxesArr as Float32Array | Int32Array | Uint8Array, scoresArr as Float32Array | Int32Array | Uint8Array,
-    DEFAULT_IOU_THRESHOLD);
-
-  const results = [];
-  console.log(preKeepBoxesArr);
-  console.log(keepIndx);
-  for (let i = 0; i < keepIndx.length; i++) {
-    const box = boxesArr.slice(i * 4, i * 4 + 4);
-    const classProb = keepScores[i];
-    const className = classNames[class_ids[keepIndx[i]]];
-
-    if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
-      return;
-    }
-
-    results.push({
-      top: box[0],
-      left: box[1],
-      bottom: box[2],
-      right: box[3],
-      classProb: classProb,
-      className: className,
-    });
-    }
+  var results = [];
+  for (let i = 0; i < boxes_a.length; i++) {
+      const box = boxes_a[i];
+      const classProb = scores[i];
+      const className = classNames[class_ids[i]];
   
-    return results;
+      if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
+        continue;
+      }
+      const top = Math.max(0, box[1]);
+      const left = Math.max(0, box[0]);
+      const width = Math.min(640, box[2]);
+      const height = Math.min(640, box[3]);
+  
+      console.log(box);
+      results.push({
+        top: top,
+        left: left,
+        width: width,
+        height: height,
+        classProb: classProb,
+        className: className,
+      });
+    }
+    console.log(results);
+  
+
+  // const imageDims = yolo.reshape(yolo.stack([yFactor, xFactor, yFactor, xFactor]), [1, 4]);
+  // const boxesTensor = new Tensor('float32', boxes_a.flat(), [boxes_a.length, 4]);
+  // const scoresTensor = new Tensor('float32', scores, [scores.length, 1]);
+
+  // const boxes: Tensor = yolo.mul(boxesTensor, imageDims);
+
+  // const [preKeepBoxesArr, scoresArr] = await Promise.all([
+  //   boxes.data,
+  //   scoresTensor.data,
+  // ]);
+
+  // const [keepIndx, boxesArr, keepScores] = non_max_suppression(
+  //   preKeepBoxesArr as Float32Array | Int32Array | Uint8Array, scoresArr as Float32Array | Int32Array | Uint8Array,
+  //   DEFAULT_IOU_THRESHOLD
+  // );
+
+  // const results = [];
+  // console.log(preKeepBoxesArr);
+  // console.log(keepIndx);
+  // console.log(boxesArr);
+  // console.log(keepScores);
+  // console.log("keepIndx.length: " + keepIndx.length);
+  // for (let i = 0; i < keepIndx.length; i++) {
+  //   const box = boxesArr[1];
+  //   const classProb = keepScores[i];
+  //   const className = classNames[class_ids[keepIndx[i]]];
+
+  //   if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
+  //     continue;
+  //   }
+  //   const top = Math.max(0, box[0]);
+  //   const left = Math.max(0, box[1]);
+  //   const bottom = Math.min(640, box[2]);
+  //   const right = Math.min(640, box[3]);
+
+  //   console.log(box);
+  //   results.push({
+  //     top: top,
+  //     left: left,
+  //     bottom: bottom,
+  //     right: right,
+  //     classProb: classProb,
+  //     className: className,
+  //   });
+  // }
+  // console.log(results);
+
+  
+  return results;
 }
 
 // export async function postprocess(outputTensor: Tensor, numClasses: number) {

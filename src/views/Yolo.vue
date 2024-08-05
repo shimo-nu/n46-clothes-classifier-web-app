@@ -147,18 +147,19 @@ export default defineComponent({
       document.body.removeChild(a);
       const boxes = await yolo.postprocess(originalOutput, 35);
       boxes.forEach((box) => {
-        const { top, left, bottom, right, classProb, className } = box;
+        const { top, left, width, height, classProb, className } = box;
          const webcamContainerElement = document.getElementById("webcam-container") as HTMLElement;
         // Depending on the display size, webcamContainerElement might be smaller than 416x416.
-        var [ox, oy] = [(webcamContainerElement.offsetWidth - image_org_width) / 2, (webcamContainerElement.offsetHeight - image_org_height) / 2];
-        // console.log(ox, oy);
-        ox = 0;
-        oy = 0;
+        var [ox, oy] = [(webcamContainerElement.offsetWidth - image_org_width) / 2, (webcamContainerElement.offsetHeight - image_org_height) / 2]
+        console.log(top, left, width, height, classProb, className);
+        // ox = 0;
+        // oy = 0;
+        // console.log(left-ox, top-oy, right-left, bottom-top);
         drawRect(
-          left - ox, 
-          top - oy,
-          right - left,
-          bottom - top,
+          left, 
+          top,
+          width,
+          height,
           `${className} Confidence: ${Math.round(classProb * 100)}% Time: ${inferenceTime.toFixed(1)}ms`
         );
       });
