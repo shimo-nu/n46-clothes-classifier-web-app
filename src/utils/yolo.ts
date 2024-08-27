@@ -47,13 +47,15 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
   const yFactor = yolo.scalar(INPUT_DIM);
 
   let maxScore_ = -1;
+  console.log("Process");
 
   for (let i = 0; i < rows; i++) {
     const classScores = yolo.slice(outputTensor, [i, 4], [1, numClasses]);
     const maxScore = yolo.max(classScores, 1);
     const classId = yolo.argMax(classScores, 1);
+
     if (i == 0) {
-      console.log(outputTensor)
+      console.log(outputTensor);
       console.log(classScores);
       console.log(maxScore);
       console.log(maxScore.data);
@@ -62,9 +64,7 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
       console.log(classId.data);
       console.log(classId.data[0]);
     }
-    if (maxScore.data[0] > maxScore_) {
-      maxScore_ = maxScore.data[0];
-    }
+
     if (maxScore.data[0] >= DEFAULT_CLASS_PROB_THRESHOLD) {
       const [x, y, w, h] = yolo.slice(outputTensor, [i, 0], [1, 4]).data;
 
@@ -79,82 +79,39 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
     }
   }
 
-  console.log(class_ids);
-  console.log(boxes_a);
+  // NMSの適用
+  const [keepIndx, final_boxes, keepScores] = non_max_suppression(
+    boxes_a.flat(), // NMSの入力に合わせて配列を平坦化
+    scores,
+    DEFAULT_IOU_THRESHOLD
+  );
 
+  // NMS後の結果をresultsに格納
   var results = [];
-  for (let i = 0; i < boxes_a.length; i++) {
-      const box = boxes_a[i];
-      const classProb = scores[i];
-      const className = classNames[class_ids[i]];
-  
-      if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
-        continue;
-      }
-      const top = Math.max(0, box[1]);
-      const left = Math.max(0, box[0]);
-      const width = Math.min(640, box[2]);
-      const height = Math.min(640, box[3]);
-  
-      console.log(box);
-      results.push({
-        top: top,
-        left: left,
-        width: width,
-        height: height,
-        classProb: classProb,
-        className: className,
-      });
-    }
-    console.log(results);
-  
+  for (let i = 0; i < keepIndx.length; i++) {  // NMSで保持されたインデックスのみループ
+    const index = keepIndx[i];
+    const box = boxes_a[index];
+    const classProb = keepScores[i];  // NMS後のスコアを使用
+    const className = classNames[class_ids[index]];
 
-  // const imageDims = yolo.reshape(yolo.stack([yFactor, xFactor, yFactor, xFactor]), [1, 4]);
-  // const boxesTensor = new Tensor('float32', boxes_a.flat(), [boxes_a.length, 4]);
-  // const scoresTensor = new Tensor('float32', scores, [scores.length, 1]);
+    const top = Math.max(0, box[1]);
+    const left = Math.max(0, box[0]);
+    const width = Math.min(640, box[2]);
+    const height = Math.min(640, box[3]);
 
-  // const boxes: Tensor = yolo.mul(boxesTensor, imageDims);
+    console.log(box);
+    results.push({
+      top: top,
+      left: left,
+      width: width,
+      height: height,
+      classProb: classProb,
+      className: className,
+    });
+  }
 
-  // const [preKeepBoxesArr, scoresArr] = await Promise.all([
-  //   boxes.data,
-  //   scoresTensor.data,
-  // ]);
+  console.log(results);
 
-  // const [keepIndx, boxesArr, keepScores] = non_max_suppression(
-  //   preKeepBoxesArr as Float32Array | Int32Array | Uint8Array, scoresArr as Float32Array | Int32Array | Uint8Array,
-  //   DEFAULT_IOU_THRESHOLD
-  // );
-
-  // const results = [];
-  // console.log(preKeepBoxesArr);
-  // console.log(keepIndx);
-  // console.log(boxesArr);
-  // console.log(keepScores);
-  // console.log("keepIndx.length: " + keepIndx.length);
-  // for (let i = 0; i < keepIndx.length; i++) {
-  //   const box = boxesArr[1];
-  //   const classProb = keepScores[i];
-  //   const className = classNames[class_ids[keepIndx[i]]];
-
-  //   if (classProb < DEFAULT_CLASS_PROB_THRESHOLD) {
-  //     continue;
-  //   }
-  //   const top = Math.max(0, box[0]);
-  //   const left = Math.max(0, box[1]);
-  //   const bottom = Math.min(640, box[2]);
-  //   const right = Math.min(640, box[3]);
-
-  //   console.log(box);
-  //   results.push({
-  //     top: top,
-  //     left: left,
-  //     bottom: bottom,
-  //     right: right,
-  //     classProb: classProb,
-  //     className: className,
-  //   });
-  // }
-  // console.log(results);
 
   
   return results;
