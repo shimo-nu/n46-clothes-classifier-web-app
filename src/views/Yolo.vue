@@ -17,16 +17,27 @@ import ndarray from 'ndarray';
 import ops from 'ndarray-ops';
 import { runModelUtils, yolo, yoloTransforms } from '../utils/index';
 import CameraComponent from '../components/common/WebcamUI.vue';
+import { uniform, music_costume } from '../data/yolo_classes';
 
-
-const MODEL_FILEPATH = '/data/best.onnx';
+var MODEL_FILEPATH = '/data/best.onnx';
 
 export default defineComponent({
   name: 'App',
   components: {
     CameraComponent,
   },
-  setup() {
+
+  props: {
+    classificationType: {
+      type: String,
+      required: true,
+    }
+  },
+
+  setup(props) {
+
+
+
     const inputCanvas = ref<HTMLCanvasElement | null>(null);
     const outputContainer = ref<HTMLDivElement | null>(null);
     var session = ref<InferenceSession | null>(null);
@@ -34,10 +45,21 @@ export default defineComponent({
     const image_org_width = 640;
     const image_org_height = 640;
 
-    
+    var classNames;
 
     const loadModel = async () => {
       console.log("loadModel");
+      console.log(props.classificationType);
+      if (props.classificationType == "uniform") {
+        console.log("load uniform model");
+        classNames = uniform;
+        MODEL_FILEPATH = '/data/uniform/best.onnx';
+      } else {
+        console.log("load music costume model");
+        classNames = music_costume;
+        MODEL_FILEPATH = '/data/music_costume/best.onnx';
+      }
+      console.log(MODEL_FILEPATH);
       const response = await fetch(MODEL_FILEPATH);
       const modelFile = await response.arrayBuffer();
       session.value = await runModelUtils.createModelCpu(modelFile)
@@ -45,16 +67,15 @@ export default defineComponent({
       console.log(session.value);
     };
 
+
     onMounted(() => {
       console.log("onMounted");
-      // inputCanvas.value = document.createElement('canvas');
-      // outputContainer.value = document.createElement('div');
-      // document.body.appendChild(inputCanvas.value);
-      // document.body.appendChild(outputContainer.value);
+
     });
 
     const handleImageUploaded = async (imageData: string) => {
       console.log("image uploaded");
+      console.log(classNames.length);
       if (!session.value) {
         console.log("session.value is null");
           return;
@@ -121,7 +142,7 @@ export default defineComponent({
 
       console.log(tensor);
 
-      const originalOutput = new Tensor('float32', tensor.data as Float32Array, [1, 39, 8400]);
+      const originalOutput = new Tensor('float32', tensor.data as Float32Array, [1, classNames.length + 4, 8400]);
       // const originalOutput = new Tensor('float32', tensor.data as Float32Array, [1, 125, 13, 13]);
       // const outputTensor = yoloTransforms.transpose(originalOutput, [0, 2, 1]);
 
@@ -135,17 +156,9 @@ export default defineComponent({
         dims: tensorDims,
       };
 
-      const blob = new Blob([JSON.stringify(tensorJson, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      
 
-      // 仮想的なリンクを作成してユーザーにダウンロードさせる
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'tensor_output.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      const boxes = await yolo.postprocess(originalOutput, 35);
+      const boxes = await yolo.postprocess(originalOutput, 35, classNames);
       boxes.forEach((box) => {
         const { top, left, width, height, classProb, className } = box;
          const webcamContainerElement = document.getElementById("webcam-container") as HTMLElement;
@@ -170,7 +183,7 @@ export default defineComponent({
       rect.style.cssText = `position: absolute; top: ${y}px; left: ${x}px; width: ${w}px; height: ${h}px; border: 2px solid ${color};`;
       const label = document.createElement('div');
       label.innerText = text;
-      label.style.cssText = 'background: rgba(255, 255, 255, 0.5); padding: 2px; font-size: 10px;';
+      label.style.cssText = 'background: rgba(255, 255, 255, 0.5); color: black; padding: 2px; font-size: 10px;';
       rect.appendChild(label);
       outputContainer.value!.appendChild(rect);
     };
