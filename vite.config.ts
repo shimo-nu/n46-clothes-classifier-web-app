@@ -14,12 +14,6 @@ export default defineConfig({
     vueJsx(),
     vueDevTools(),
     tsconfigPaths(),
-    // typescript({
-    //   tsconfig: './tsconfig.json',
-    //   declaration: true,
-    //   declarationDir: 'dist/types',
-    //   include: ['src/**/*.ts', 'src/**/*.vue']
-    // })
     viteStaticCopy({
       targets: [
         {
