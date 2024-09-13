@@ -1,16 +1,21 @@
 <template>
   <div id="app">
-    <h1>Camera and Image Upload Example</h1>
+    <h1>{{ labelCategoryName }}</h1>
     <CameraComponent @image-uploaded="handleImageUploaded"/>
     <div ref="webcam-container" id="webcam-container" style="position: relative;">
       <canvas ref="inputCanvas" id="inputCanvas"></canvas>
       <div ref="outputContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+    </div>
+    <div>
+      <button @click="goToAnnotation(handleImage, labelCategoryName)">アノテーションビューへ移動</button>
     </div>
   </div>
 </template>
 
 
 <script lang="ts">
+
+import { useRouter } from 'vue-router';
 import { defineComponent, onMounted, ref } from 'vue';
 import { Tensor, InferenceSession } from 'onnxruntime-web';
 import ndarray from 'ndarray';
@@ -19,7 +24,10 @@ import { runModelUtils, yolo, yoloTransforms } from '../utils/index';
 import CameraComponent from '../components/common/WebcamUI.vue';
 import { uniform, music_costume } from '../data/yolo_classes';
 
+import AnnotationTools from './Annotation.vue';
+
 var MODEL_FILEPATH = '/data/best.onnx';
+var classNames;
 
 export default defineComponent({
   name: 'App',
@@ -34,10 +42,12 @@ export default defineComponent({
     }
   },
 
+
   setup(props) {
 
-
-
+    
+    const labelCategoryName = ref<string>('');
+    const handleImage = ref<string>('');
     const inputCanvas = ref<HTMLCanvasElement | null>(null);
     const outputContainer = ref<HTMLDivElement | null>(null);
     var session = ref<InferenceSession | null>(null);
@@ -45,18 +55,18 @@ export default defineComponent({
     const image_org_width = 640;
     const image_org_height = 640;
 
-    var classNames;
+    const router = useRouter();
 
     const loadModel = async () => {
-      console.log("loadModel");
-      console.log(props.classificationType);
       if (props.classificationType == "uniform") {
         console.log("load uniform model");
         classNames = uniform;
+        labelCategoryName.value = "制服識別";
         MODEL_FILEPATH = '/data/uniform/best.onnx';
       } else {
         console.log("load music costume model");
         classNames = music_costume;
+        labelCategoryName.value = "歌衣装識別";
         MODEL_FILEPATH = '/data/music_costume/best.onnx';
       }
       console.log(MODEL_FILEPATH);
@@ -68,9 +78,19 @@ export default defineComponent({
     };
 
 
+
+    const goToAnnotation = (handleImage, labelCategoryName) => {
+      router.push({  // useRouterフックから取得したrouterを使用
+        name: 'annotation',
+        query: { 
+          handleImage: handleImage, 
+          labelCategoryName : labelCategoryName }  // パラメータとして画像とカテゴリを渡す
+      });
+    };
+
+
     onMounted(() => {
       console.log("onMounted");
-
     });
 
     const handleImageUploaded = async (imageData: string) => {
@@ -100,6 +120,7 @@ export default defineComponent({
         }
       };
       img.src = imageData;
+      handleImage.value = imageData;
     };
 
   
@@ -173,7 +194,7 @@ export default defineComponent({
           top,
           width,
           height,
-          `${className} Confidence: ${Math.round(classProb * 100)}% Time: ${inferenceTime.toFixed(1)}ms`
+          `${className} Confidence: ${Math.round(classProb * 100)}%`
         );
       });
     };
@@ -183,7 +204,7 @@ export default defineComponent({
       rect.style.cssText = `position: absolute; top: ${y}px; left: ${x}px; width: ${w}px; height: ${h}px; border: 2px solid ${color};`;
       const label = document.createElement('div');
       label.innerText = text;
-      label.style.cssText = 'background: rgba(255, 255, 255, 0.5); color: black; padding: 2px; font-size: 10px;';
+      label.style.cssText = 'background: rgba(255, 255, 255, 0.5); color: black; padding: 2px; font-size: 1em;';
       rect.appendChild(label);
       outputContainer.value!.appendChild(rect);
     };
@@ -194,6 +215,9 @@ export default defineComponent({
       handleImageUploaded,
       inputCanvas,
       outputContainer,
+      goToAnnotation,
+      labelCategoryName,
+      handleImage
     };
   },
 });

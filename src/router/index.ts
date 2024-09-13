@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import Yolo from '../views/Yolo.vue'
+import Annotation from '../views/Annotation.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,6 +30,14 @@ const router = createRouter({
       name: 'music-costume-classification',
       component: Yolo,
       props: { classificationType: 'musicCostume' }
+    },
+    {
+      path: '/annotation',
+      name: 'annotation',
+      component: Annotation,
+      props: route => ({ 
+        handleImage: route.query.handleImage, 
+        labelCategoryName: route.query.labelCategoryName })
     }
   ]
 })
