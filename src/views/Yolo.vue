@@ -9,6 +9,7 @@
     <div>
       <button @click="goToAnnotation(handleImage, labelCategoryName)">アノテーションビューへ移動</button>
     </div>
+     <LoadingComponent :isLoading="isLoading" />
   </div>
 </template>
 
@@ -25,6 +26,7 @@ import CameraComponent from '../components/common/WebcamUI.vue';
 import { uniform, music_costume } from '../data/yolo_classes';
 
 import AnnotationTools from './Annotation.vue';
+import LoadingComponent from '../components/Loading.vue';
 
 var MODEL_FILEPATH = '/data/best.onnx';
 var classNames;
@@ -33,6 +35,7 @@ export default defineComponent({
   name: 'App',
   components: {
     CameraComponent,
+    LoadingComponent
   },
 
   props: {
@@ -44,8 +47,7 @@ export default defineComponent({
 
 
   setup(props) {
-
-    
+    const isLoading = ref(false);
     const labelCategoryName = ref<string>('');
     const handleImage = ref<string>('');
     const inputCanvas = ref<HTMLCanvasElement | null>(null);
@@ -58,6 +60,7 @@ export default defineComponent({
     const router = useRouter();
 
     const loadModel = async () => {
+      isLoading.value = true;
       if (props.classificationType == "uniform") {
         console.log("load uniform model");
         classNames = uniform;
@@ -69,12 +72,14 @@ export default defineComponent({
         labelCategoryName.value = "歌衣装識別";
         MODEL_FILEPATH = '/data/music_costume/best.onnx';
       }
-      console.log(MODEL_FILEPATH);
       const response = await fetch(MODEL_FILEPATH);
       const modelFile = await response.arrayBuffer();
       session.value = await runModelUtils.createModelCpu(modelFile)
-      await runModelUtils.warmupModel(session.value, [1, 3, image_org_width, image_org_height]);
-      console.log(session.value);
+      const result = await runModelUtils.warmupModel(session.value, [1, 3, image_org_width, image_org_height]);
+      if (result) {
+        isLoading.value = false;
+        console.log("model loaded");
+      }
     };
 
 
@@ -82,9 +87,13 @@ export default defineComponent({
     const goToAnnotation = (handleImage, labelCategoryName) => {
       router.push({  // useRouterフックから取得したrouterを使用
         name: 'annotation',
-        query: { 
-          handleImage: handleImage, 
-          labelCategoryName : labelCategoryName }  // パラメータとして画像とカテゴリを渡す
+        // query: { 
+        //   handleImage: handleImage, 
+        //   labelCategoryName : labelCategoryName }  // パラメータとして画像とカテゴリを渡す
+        params: {
+          handleImage: handleImage,
+          labelCategoryName: labelCategoryName
+        }
       });
     };
 
@@ -217,7 +226,8 @@ export default defineComponent({
       outputContainer,
       goToAnnotation,
       labelCategoryName,
-      handleImage
+      handleImage,
+      isLoading
     };
   },
 });

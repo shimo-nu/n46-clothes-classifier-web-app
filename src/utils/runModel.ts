@@ -28,6 +28,7 @@ export async function warmupModel(model: InferenceSession, dims: number[]) {
   } catch (e) {
     console.error(e);
   }
+  return true;
 }
 
 export async function runModel(model: InferenceSession, preprocessedData: Tensor): Promise<[Tensor, number]> {
