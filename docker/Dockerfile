@@ -7,4 +7,6 @@ COPY . .
 
 RUN npm install
 
+RUN npm install vuetify
+
 CMD ["./docker/run.sh"]
