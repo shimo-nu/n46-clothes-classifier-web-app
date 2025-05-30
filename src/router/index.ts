@@ -32,12 +32,12 @@ const router = createRouter({
       props: { classificationType: 'musicCostume' }
     },
     {
-      path: '/annotation',
+      path: '/annotation:handleImage/:labelCategoryName',
       name: 'annotation',
       component: Annotation,
       props: route => ({ 
-        handleImage: route.query.handleImage, 
-        labelCategoryName: route.query.labelCategoryName })
+        handleImage: route.params.handleImage, 
+        labelCategoryName: route.params.labelCategoryName })
     }
   ]
 })

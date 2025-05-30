@@ -7,7 +7,7 @@ import NavMenu from './components/NavMenu.vue'
 <template>
   <NavMenu />
   <div>
-    <div><h1>乃木坂衣装識別</h1></div>
+    <div><h1>乃木坂あれこれ</h1></div>
     <!-- <RouterLink to="/">Home</RouterLink>-->
     <router-view />
     <!-- <Yolo /> -->

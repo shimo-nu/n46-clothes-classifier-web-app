@@ -41,7 +41,7 @@
             v-for="(box, index) in boxes"
             :key="index"
             class="bounding-box resizable"
-            :style="{ left: box.left + 'px', top: box.top + 'px', width: box.width + 'px', height: box.height + 'px' }"
+            :style="{ left: box.left + 'px', top: box.top + 'px', width: box.width + 'px', height: box.height + 'px', borderColor: box.color }"
             @mousedown.stop="startDragging(box, $event)"
           >
             <span class="label">{{ box.label }}</span>
@@ -112,6 +112,30 @@ export default {
     const offsetX = ref(0);
     const offsetY = ref(0);
     const resizeDirection = ref('');
+    const labelColorMap = {
+      // 制服ラベル用の色（例）
+      '1_uniform': '#e6194b', '2_uniform': '#3cb44b', '3_uniform': '#ffe119', '4_uniform': '#4363d8',
+      '5_uniform': '#f58231', '6_uniform': '#911eb4', '7_uniform': '#46f0f0', '8_uniform': '#f032e6',
+      '9_uniform': '#bcf60c', '10_uniform': '#fabebe', '11_uniform': '#008080', '12_uniform': '#e6beff',
+      '13_uniform': '#9a6324', '14_uniform': '#fffac8', '15_uniform': '#800000', '16_uniform': '#aaffc3',
+      '17_uniform': '#808000', '18_uniform': '#ffd8b1', '19_uniform': '#000075', '20_uniform': '#808080',
+      '21_uniform': '#ffffff', '22_uniform': '#000000', '23_uniform': '#a9a9a9', '24_uniform': '#ffb347',
+      '25_uniform': '#b19cd9', '26_uniform': '#77dd77', '27_uniform': '#ff6961', '28_uniform': '#cfcfc4',
+      '29_uniform': '#aec6cf', '30_uniform': '#b39eb5', '31_uniform': '#ff7f50', '32_uniform': '#b2fba5',
+      '33_uniform': '#ffb347', '34_uniform': '#b19cd9', '35_uniform': '#77dd77',
+      // 歌衣装ラベル用の色（例）
+      '1_music_costume': '#e6194b', '2_music_costume': '#3cb44b', '3_music_costume': '#ffe119', '4_music_costume': '#4363d8',
+      '5_music_costume': '#f58231', '6_music_costume': '#911eb4', '7_music_costume': '#46f0f0', '8_music_costume': '#f032e6',
+      '9_music_costume': '#bcf60c', '10_music_costume': '#fabebe', '11_music_costume': '#008080', '12_music_costume': '#e6beff',
+      '13_music_costume': '#9a6324', '14_music_costume': '#fffac8', '15_music_costume': '#800000', '16_music_costume': '#aaffc3',
+      '17_music_costume': '#808000', '18_music_costume': '#ffd8b1', '19_music_costume': '#000075', '20_music_costume': '#808080',
+      '21_music_costume': '#ffffff', '22_music_costume': '#000000', '23_music_costume': '#a9a9a9', '24_music_costume': '#ffb347',
+      '25_music_costume': '#b19cd9', '26_music_costume': '#77dd77', '27_music_costume': '#ff6961', '28_music_costume': '#cfcfc4',
+      '29_music_costume': '#aec6cf', '30_music_costume': '#b39eb5', '31_music_costume': '#ff7f50', '32_music_costume': '#b2fba5',
+      '33_music_costume': '#ffb347', '34_music_costume': '#b19cd9', '35_music_costume': '#77dd77',
+      // デフォルト色
+      'default': 'red'
+    };
 
     onMounted(() => {
       if (props.labelCategoryName && props.handleImage) {
@@ -173,7 +197,8 @@ export default {
           top: startY.value,
           width: currentWidth.value,
           height: currentHeight.value,
-          label: selectedLabel.value  // 選択されたラベルを追加
+          label: selectedLabel.value,  // 選択されたラベルを追加
+          color: labelColorMap[selectedLabel.value] || labelColorMap['default'] // ラベルに応じた色
         });
         isDrawing.value = false;
         currentWidth.value = 0;
@@ -253,7 +278,7 @@ export default {
 
 .bounding-box {
   position: absolute;
-  border: 2px solid red;
+  border: 2px solid;
   cursor: move;
 }
 

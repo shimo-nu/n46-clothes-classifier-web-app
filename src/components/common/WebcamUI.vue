@@ -1,6 +1,6 @@
 <template>
   <div class="webcam-component">
-    <video ref="videoElement" autoplay></video>
+    <video ref="videoElement" autoplay  muted playsinline></video>
     <button @click="startCamera">Start Camera</button>
     <button @click="stopCamera">Stop Camera</button>
     <div>
@@ -32,6 +32,20 @@ export default defineComponent({
     const imageUrl = ref<string | null>(null);
 
     const startCamera = async () => {
+      // try {
+      //   const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      //   videoStream.value = stream;
+      //   if (videoElement.value) {
+      //     videoElement.value.srcObject = stream;
+      //   }
+      // } catch (error) {
+      //   console.error('Error accessing camera:', error);
+      // }
+       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('お使いのブラウザはカメラのアクセスをサポートしていません。');
+        return;
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         videoStream.value = stream;
@@ -39,7 +53,7 @@ export default defineComponent({
           videoElement.value.srcObject = stream;
         }
       } catch (error) {
-        console.error('Error accessing camera:', error);
+        console.error('カメラにアクセスできません:', error);
       }
     };
 

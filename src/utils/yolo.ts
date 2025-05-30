@@ -2,9 +2,6 @@
 
 import {Tensor} from 'onnxruntime-web';
 
-import classNames from '../data/yolo_classes';
-
-import {NumberDataType, Type} from './utils-yolo/yoloPostprocess';
 
 
 import * as yolo from './utils-yolo/yoloPostprocess';
@@ -26,11 +23,11 @@ export const YOLO_ANCHORS = new Tensor(
     ]),
     [5, 2]);
 const DEFAULT_FILTER_BOXES_THRESHOLD = 0.01;
-const DEFAULT_IOU_THRESHOLD = 0.3;
-const DEFAULT_CLASS_PROB_THRESHOLD = 0.5;
+const DEFAULT_IOU_THRESHOLD = 0.8;
+const DEFAULT_CLASS_PROB_THRESHOLD = 0.7;
 const INPUT_DIM = 640;
 
-export async function postprocess(outputs: Tensor, numClasses: number) {
+export async function postprocess(outputs: Tensor, numClasses: number, classNames: string[]) {
   var boxes_a = [];
   var scores = [];
   var class_ids = [];
@@ -54,17 +51,6 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
     const maxScore = yolo.max(classScores, 1);
     const classId = yolo.argMax(classScores, 1);
 
-    if (i == 0) {
-      console.log(outputTensor);
-      console.log(classScores);
-      console.log(maxScore);
-      console.log(maxScore.data);
-      console.log(maxScore.data[0]);
-      console.log(classId);
-      console.log(classId.data);
-      console.log(classId.data[0]);
-    }
-
     if (maxScore.data[0] >= DEFAULT_CLASS_PROB_THRESHOLD) {
       const [x, y, w, h] = yolo.slice(outputTensor, [i, 0], [1, 4]).data;
 
@@ -80,6 +66,7 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
   }
 
   // NMSの適用
+  console.log(DEFAULT_IOU_THRESHOLD);
   const [keepIndx, final_boxes, keepScores] = non_max_suppression(
     boxes_a.flat(), // NMSの入力に合わせて配列を平坦化
     scores,
@@ -100,6 +87,7 @@ export async function postprocess(outputs: Tensor, numClasses: number) {
     const height = Math.min(640, box[3]);
 
     console.log(box);
+    console.log(classProb);
     results.push({
       top: top,
       left: left,
