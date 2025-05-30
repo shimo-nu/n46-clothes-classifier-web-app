@@ -1,11 +1,25 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    },
-    {
-      "path": "./tsconfig.app.json"
-    }
+
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "isolatedModules": false,
+    "preserveSymlinks": true,
+    "target": "esnext",
+    "module": "esnext",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",  // 出力先ディレクトリ
+    "rootDir": "src"  // ソースコードのルートディレクトリ
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules", 
+    "src/common"
   ]
+  
 }

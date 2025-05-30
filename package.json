@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "node post-install.cjs",
     "dev": "vite --host --port 8080",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
@@ -13,9 +14,20 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "blueimp-load-image": "^5.16.0",
+    "ndarray": "^1.0.19",
+    "ndarray-ops": "^1.2.2",
+    "ndarray-resample": "^1.0.1",
+    "ndarray-squeeze": "^1.0.2",
+    "ndarray-unpack": "^1.0.0",
+    "onnxruntime-web": "^1.18.0",
     "pinia": "^2.1.7",
+    "vite-tsconfig-paths": "^4.3.2",
     "vue": "^3.4.29",
-    "vue-router": "^4.3.3"
+    "vue-class-component": "^8.0.0-rc.1",
+    "vue-facing-decorator": "^3.0.4",
+    "vue-router": "^4.3.3",
+    "vuetify": "^3.7.0-beta.1"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "^1.8.0",
@@ -32,6 +44,7 @@
     "prettier": "^3.2.5",
     "typescript": "~5.4.0",
     "vite": "^5.3.1",
+    "vite-plugin-static-copy": "^1.0.6",
     "vite-plugin-vue-devtools": "^7.3.1",
     "vue-tsc": "^2.0.21"
   }
