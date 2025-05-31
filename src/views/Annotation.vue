@@ -1,10 +1,39 @@
 <template>
   <v-container class="annotation-tool">
-    <v-row>
+    <v-row v-if="isNewAnnotation">
+      <v-col cols="12">
+        <v-card class="mx-auto" max-width="600">
+          <v-card-title>新規画像アップロード</v-card-title>
+          <v-card-text>
+            <div class="upload-area" 
+                 @dragover.prevent 
+                 @drop.prevent="handleFileDrop"
+                 :class="{ 'dragging': isDragging }">
+              <input
+                type="file"
+                ref="fileInput"
+                @change="handleFileSelect"
+                accept="image/*"
+                style="display: none"
+              />
+              <div class="upload-content">
+                <v-icon size="48" color="primary">mdi-cloud-upload</v-icon>
+                <p>画像をドラッグ＆ドロップするか、クリックして選択してください</p>
+                <v-btn color="primary" @click="$refs.fileInput.click()">
+                  ファイルを選択
+                </v-btn>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <v-row v-if="!isNewAnnotation || (isNewAnnotation && uploadedImage)">
       <!-- 選択された画像とラベルクラスを表示 -->
       <v-col cols="12" md="6">
         <v-card class="mx-auto" max-width="400">
-          <v-img :src="handleImage" alt="Annotatable Image"></v-img>
+          <v-img :src="displayImage" alt="Annotatable Image"></v-img>
           <v-card-title>Image Annotation</v-card-title>
           <v-card-subtitle>
             カテゴリ: {{ labelCategoryName }}
@@ -33,21 +62,48 @@
     </v-row>
 
     <!-- Image annotation area -->
-    <v-row>
+    <v-row v-if="!isNewAnnotation || (isNewAnnotation && uploadedImage)">
       <v-col cols="12" md="8">
-        <div class="image-container" @mousedown="startDrawing" @mousemove="draw" @mouseup="endDrawing">
-          <img :src="handleImage" alt="Annotatable Image" class="annotatable-image"/>
-          <div
-            v-for="(box, index) in boxes"
-            :key="index"
-            class="bounding-box resizable"
-            :style="{ left: box.left + 'px', top: box.top + 'px', width: box.width + 'px', height: box.height + 'px', borderColor: box.color }"
-            @mousedown.stop="startDragging(box, $event)"
-          >
-            <span class="label">{{ box.label }}</span>
-            <button class="delete-btn" @click.stop="deleteBox(index)">削除</button>
-            <div class="resize-handle" @mousedown.stop.prevent="startResizing(box, $event)"></div>
-          </div>
+        <div class="image-container" @mousedown="startDrawing" @mousemove="draw" @mouseup="endDrawing" @mouseleave="endDrawing">
+          <img :src="displayImage" alt="Annotatable Image" class="annotatable-image"/>
+          <template v-for="(box, index) in boxes" :key="index">
+            <!-- リサイズ中のボックス -->
+            <div
+              v-if="isResizing && currentBox === box"
+              class="bounding-box resizable is-resizing"
+              :style="{ 
+                left: tempBox.left + 'px', 
+                top: tempBox.top + 'px', 
+                width: tempBox.width + 'px', 
+                height: tempBox.height + 'px', 
+                borderColor: box.color 
+              }"
+            >
+              <div class="label-container">
+                <span class="label">{{ box.label }}</span>
+              </div>
+              <div class="resize-handle"></div>
+            </div>
+            <!-- 通常のボックス -->
+            <div
+              v-else
+              class="bounding-box resizable"
+              :style="{ 
+                left: box.left + 'px', 
+                top: box.top + 'px', 
+                width: box.width + 'px', 
+                height: box.height + 'px', 
+                borderColor: box.color 
+              }"
+              @mousedown.stop="startDragging(box, $event)"
+            >
+              <div class="label-container">
+                <span class="label">{{ box.label }}</span>
+              </div>
+              <button class="delete-btn" @click.stop="deleteBox(index)">×</button>
+              <div class="resize-handle" @mousedown.stop.prevent="startResizing(box, $event)"></div>
+            </div>
+          </template>
           <div
             v-if="isDrawing"
             class="bounding-box"
@@ -66,11 +122,12 @@
               :key="index"
             >
               <v-list-item-content>
-                Box {{ index + 1 }}: ({{ box.left }}, {{ box.top }}) - ({{ box.width }}x{{ box.height }}) - Label: {{ box.label }}
+                Box {{ index + 1 }}: ({{ Math.round(box.left) }}, {{ Math.round(box.top) }}) - ({{ Math.round(box.width) }}x{{ Math.round(box.height) }}) - Label: {{ box.label }}
                 <v-btn small text color="red" @click="deleteBox(index)">削除</v-btn>
               </v-list-item-content>
             </v-list-item>
           </v-list>
+          <v-btn color="primary" @click="submitAnnotations">送信</v-btn>
         </v-card>
       </v-col>
     </v-row>
@@ -78,8 +135,10 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { uniform, music_costume } from '../data/yolo_classes';
+import { ENDPOINTS } from '../api/endpoints';
+import axios from 'axios';
 
 export default {
   props: {
@@ -90,17 +149,21 @@ export default {
     labelCategoryName: {
       type: String,
       required: true
+    },
+    isNewAnnotation: {
+      type: Boolean,
+      default: false
     }
   },
   setup(props) {
-    const selectedCategory = ref('');  // 選択されたラベルカテゴリー
-    const currentLabels = ref([]);  // 現在のラベルリスト
-    const selectedLabel = ref('');  // 選択されたラベル
+    const selectedCategory = ref('');
+    const currentLabels = ref([]);
+    const selectedLabel = ref('');
     const labelCategories = {
       '制服識別': uniform,
       '歌衣装識別': music_costume
     };
-    const boxes = ref([]);  // 描画されたボックス
+    const boxes = ref([]);
     const isDrawing = ref(false);
     const isDragging = ref(false);
     const isResizing = ref(false);
@@ -112,8 +175,14 @@ export default {
     const offsetX = ref(0);
     const offsetY = ref(0);
     const resizeDirection = ref('');
+    const uploadedImage = ref(null);
+    const isDraggingFile = ref(false);
+    const tempBox = ref({ left: 0, top: 0, width: 0, height: 0 });
+    const resizeStartX = ref(0);
+    const resizeStartY = ref(0);
+
     const labelColorMap = {
-      // 制服ラベル用の色（例）
+      // 制服ラベル用の色
       '1_uniform': '#e6194b', '2_uniform': '#3cb44b', '3_uniform': '#ffe119', '4_uniform': '#4363d8',
       '5_uniform': '#f58231', '6_uniform': '#911eb4', '7_uniform': '#46f0f0', '8_uniform': '#f032e6',
       '9_uniform': '#bcf60c', '10_uniform': '#fabebe', '11_uniform': '#008080', '12_uniform': '#e6beff',
@@ -123,7 +192,7 @@ export default {
       '25_uniform': '#b19cd9', '26_uniform': '#77dd77', '27_uniform': '#ff6961', '28_uniform': '#cfcfc4',
       '29_uniform': '#aec6cf', '30_uniform': '#b39eb5', '31_uniform': '#ff7f50', '32_uniform': '#b2fba5',
       '33_uniform': '#ffb347', '34_uniform': '#b19cd9', '35_uniform': '#77dd77',
-      // 歌衣装ラベル用の色（例）
+      // 歌衣装ラベル用の色
       '1_music_costume': '#e6194b', '2_music_costume': '#3cb44b', '3_music_costume': '#ffe119', '4_music_costume': '#4363d8',
       '5_music_costume': '#f58231', '6_music_costume': '#911eb4', '7_music_costume': '#46f0f0', '8_music_costume': '#f032e6',
       '9_music_costume': '#bcf60c', '10_music_costume': '#fabebe', '11_music_costume': '#008080', '12_music_costume': '#e6beff',
@@ -137,13 +206,22 @@ export default {
       'default': 'red'
     };
 
+    const displayImage = computed(() => {
+      return props.isNewAnnotation ? uploadedImage.value : props.handleImage;
+    });
+
     onMounted(() => {
-      if (props.labelCategoryName && props.handleImage) {
-        if (props.labelCategoryName == "制服識別") {
+      // 新規アノテーションの場合でも、デフォルトで制服カテゴリを選択
+      if (props.isNewAnnotation) {
+        selectedCategory.value = "制服識別";
+        currentLabels.value = uniform;
+        selectedLabel.value = currentLabels.value.length > 0 ? currentLabels.value[0] : '';
+      } else if (props.labelCategoryName && props.handleImage) {
+        if (props.labelCategoryName === "制服識別") {
           selectedCategory.value = "制服識別";
           currentLabels.value = uniform;
           selectedLabel.value = currentLabels.value.length > 0 ? currentLabels.value[0] : '';
-        } else if (props.labelCategoryName == "歌衣装識別") {
+        } else if (props.labelCategoryName === "歌衣装識別") {
           selectedCategory.value = "歌衣装識別";
           currentLabels.value = music_costume;
           selectedLabel.value = currentLabels.value.length > 0 ? currentLabels.value[0] : '';
@@ -169,23 +247,63 @@ export default {
 
     const startDrawing = (event) => {
       if (!isDrawing.value && !isDragging.value && !isResizing.value) {
+        const rect = event.target.getBoundingClientRect();
         isDrawing.value = true;
-        startX.value = event.offsetX;
-        startY.value = event.offsetY;
+        startX.value = event.clientX - rect.left;
+        startY.value = event.clientY - rect.top;
+        console.log(startX);
+        console.log(startY);
       }
     };
 
     const draw = (event) => {
       if (isDrawing.value) {
-        currentWidth.value = event.offsetX - startX.value;
-        currentHeight.value = event.offsetY - startY.value;
+        const rect = event.target.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        currentWidth.value = Math.max(10, Math.min(x - startX.value, rect.width - startX.value));
+        currentHeight.value = Math.max(10, Math.min(y - startY.value, rect.height - startY.value));
       } else if (isDragging.value && currentBox.value) {
-        currentBox.value.left = event.clientX - offsetX.value;
-        currentBox.value.top = event.clientY - offsetY.value;
+        const rect = event.target.closest('.image-container').getBoundingClientRect();
+        const x = event.clientX - resizeStartX.value;
+        const y = event.clientY - resizeStartY.value;
+        
+        const newLeft = x - offsetX.value;
+        const newTop = y - offsetY.value;
+        
+        console.log('During Drag:', {
+          x,
+          y,
+          offsetX: offsetX.value,
+          offsetY: offsetY.value,
+          newLeft,
+          newTop,
+          currentLeft: currentBox.value.left,
+          currentTop: currentBox.value.top
+        });
+        
+        const containerWidth = rect.width;
+        const containerHeight = rect.height;
+        currentBox.value.left = Math.max(0, Math.min(newLeft, containerWidth - currentBox.value.width));
+        currentBox.value.top = Math.max(0, Math.min(newTop, containerHeight - currentBox.value.height));
       } else if (isResizing.value && currentBox.value) {
+        const rect = event.target.closest('.image-container').getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        
         if (resizeDirection.value === 'se') {
-          currentBox.value.width = Math.max(10, event.clientX - currentBox.value.left);
-          currentBox.value.height = Math.max(10, event.clientY - currentBox.value.top);
+          const newWidth = x - currentBox.value.left;
+          const newHeight = y - currentBox.value.top;
+          
+          const maxWidth = rect.width - currentBox.value.left;
+          const maxHeight = rect.height - currentBox.value.top;
+          
+          if (newWidth >= 10) {
+            currentBox.value.width = Math.min(newWidth, maxWidth);
+          }
+          if (newHeight >= 10) {
+            currentBox.value.height = Math.min(newHeight, maxHeight);
+          }
         }
       }
     };
@@ -193,20 +311,28 @@ export default {
     const endDrawing = () => {
       if (isDrawing.value) {
         boxes.value.push({
-          left: startX.value,
-          top: startY.value,
-          width: currentWidth.value,
-          height: currentHeight.value,
-          label: selectedLabel.value,  // 選択されたラベルを追加
-          color: labelColorMap[selectedLabel.value] || labelColorMap['default'] // ラベルに応じた色
+          left: Math.round(startX.value),
+          top: Math.round(startY.value),
+          width: Math.round(currentWidth.value),
+          height: Math.round(currentHeight.value),
+          label: selectedLabel.value,
+          color: labelColorMap[selectedLabel.value] || labelColorMap['default']
         });
         isDrawing.value = false;
         currentWidth.value = 0;
         currentHeight.value = 0;
       } else if (isDragging.value) {
+        if (currentBox.value) {
+          currentBox.value.left = Math.round(currentBox.value.left);
+          currentBox.value.top = Math.round(currentBox.value.top);
+        }
         isDragging.value = false;
         currentBox.value = null;
       } else if (isResizing.value) {
+        if (currentBox.value) {
+          currentBox.value.width = Math.round(currentBox.value.width);
+          currentBox.value.height = Math.round(currentBox.value.height);
+        }
         isResizing.value = false;
         currentBox.value = null;
       }
@@ -214,23 +340,75 @@ export default {
 
     const startDragging = (box, event) => {
       if (!isResizing.value) {
+        const rect = event.target.closest('.image-container').getBoundingClientRect();
         isDragging.value = true;
         currentBox.value = box;
-        offsetX.value = event.clientX - box.left;
-        offsetY.value = event.clientY - box.top;
+        resizeStartX.value = rect.left;
+        resizeStartY.value = rect.top;
+        offsetX.value = event.clientX - (rect.left + box.left);
+        offsetY.value = event.clientY - (rect.top + box.top);
+        console.log('Start Drag:', {
+          boxLeft: box.left,
+          boxTop: box.top,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          rectLeft: rect.left,
+          rectTop: rect.top,
+          offsetX: offsetX.value,
+          offsetY: offsetY.value
+        });
       }
     };
 
     const startResizing = (box, event) => {
+      const rect = event.target.closest('.image-container').getBoundingClientRect();
       isResizing.value = true;
       currentBox.value = box;
-      resizeDirection.value = 'se'; // 現在は右下の方向のみサポート
-      offsetX.value = event.clientX;
-      offsetY.value = event.clientY;
+      resizeDirection.value = 'se';
+      offsetX.value = event.clientX - (rect.left + box.left + box.width);
+      offsetY.value = event.clientY - (rect.top + box.top + box.height);
     };
 
     const deleteBox = (index) => {
       boxes.value.splice(index, 1);
+    };
+
+    const submitAnnotations = async () => {
+      try {
+        const payload = {
+          image: props.handleImage,
+          labelCategory: selectedCategory.value,
+          boxes: boxes.value
+        };
+        const response = await axios.post(ENDPOINTS.ANNOTATIONS, payload);
+        alert('送信が完了しました');
+      } catch (error) {
+        alert('送信に失敗しました');
+        console.error(error);
+      }
+    };
+
+    const handleFileSelect = (event) => {
+      const file = event.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedImage.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleFileDrop = (event) => {
+      isDraggingFile.value = false;
+      const file = event.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedImage.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
     };
 
     return {
@@ -246,22 +424,51 @@ export default {
       currentWidth,
       currentHeight,
       boxes,
+      uploadedImage,
+      isDraggingFile,
+      displayImage,
+      labelColorMap,
       updateLabels,
       startDrawing,
       draw,
       endDrawing,
       startDragging,
       startResizing,
-      deleteBox
+      deleteBox,
+      submitAnnotations,
+      handleFileSelect,
+      handleFileDrop,
+      resizeStartX,
+      resizeStartY
     };
   }
 };
 </script>
 
 <style scoped>
-
 .annotation-tool {
   padding: 20px;
+}
+
+.upload-area {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-area.dragging {
+  border-color: #1976d2;
+  background-color: rgba(25, 118, 210, 0.1);
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .image-container {
@@ -282,39 +489,79 @@ export default {
   cursor: move;
 }
 
-.bounding-box .label {
+.label-container {
   position: absolute;
-  top: -20px;
+  top: -24px;
   left: 0;
-  background-color: white;
-  padding: 2px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px 4px 4px 0;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.label {
+  color: white;
   font-size: 12px;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
 }
 
 .delete-btn {
   position: absolute;
-  top: -25px;
-  right: 0;
-  background: red;
+  top: -24px;
+  right: -12px;
+  background: #ff4444;
   color: white;
   border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.delete-btn:hover {
+  background: #ff0000;
 }
 
 .bounding-box:hover .delete-btn {
-  display: block;
+  display: flex;
 }
 
 .resizable .resize-handle {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  background-color: red;
-  border: 1px solid black;
-  bottom: -3px;
-  right: -3px;
+  width: 8px;
+  height: 8px;
+  background-color: white;
+  border: 2px solid #ff4444;
+  border-radius: 50%;
+  bottom: -4px;
+  right: -4px;
   cursor: se-resize;
+  z-index: 2;
 }
 
+.bounding-box.is-resizing {
+  opacity: 0.8;
+}
+
+.bounding-box.is-resizing .resize-handle {
+  display: none;
+}
+
+.v-list-item.updating {
+  background-color: rgba(0, 0, 0, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.v-list-item-content {
+  transition: opacity 0.2s ease;
+}
 </style>

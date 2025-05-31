@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import Yolo from '../views/Yolo.vue'
 import Annotation from '../views/Annotation.vue'
+import NewImageView from '../views/NewImageView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +39,21 @@ const router = createRouter({
       props: route => ({ 
         handleImage: route.params.handleImage, 
         labelCategoryName: route.params.labelCategoryName })
+    },
+    {
+      path: '/new-image',
+      name: 'new-image',
+      component: NewImageView
+    },
+    {
+      path: '/new-annotation/:handleImage/:labelCategoryName',
+      name: 'new-annotation',
+      component: Annotation,
+      props: route => ({ 
+        handleImage: route.params.handleImage, 
+        labelCategoryName: route.params.labelCategoryName,
+        isNewAnnotation: true
+      })
     }
   ]
 })

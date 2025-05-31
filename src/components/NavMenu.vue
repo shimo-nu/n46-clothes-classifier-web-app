@@ -5,6 +5,7 @@
       <li><a href="/">Home</a></li>
       <li><a href="/clothes-classification">制服</a></li>
       <li><a href="/music-costume-classification">歌衣装</a></li>
+      <li><a href="/new-image">新規画像追加</a></li>
     </ul>
     <div class="burger" @click="toggleMenu">
       <div :class="{ 'line1': true, 'toggle': isMenuOpen }"></div>
