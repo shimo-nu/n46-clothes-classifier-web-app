@@ -1,5 +1,5 @@
-export const API_BASE_URL = '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.207.227:18080/api';
 
 export const ENDPOINTS = {
-  ANNOTATIONS: `${API_BASE_URL}/annotations`
+  ANNOTATIONS: `${API_BASE_URL}/annotate`
 }; 
