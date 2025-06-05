@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:21-alpine
 
 WORKDIR /app
 
@@ -11,7 +11,6 @@ ENV VUE_APP_AUTH0_AUDIENCE=your-auth0-api-identifier
 COPY . .
 
 RUN npm install
-RUN npm install @auth0/auth0-vue
-RUN npm install vuetify
+
 
 CMD ["./docker/run.sh"]
