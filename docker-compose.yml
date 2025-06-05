@@ -1,0 +1,23 @@
+version: '3'
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        - SERVER_DOMAIN=${SERVER_DOMAIN:-192.168.207.227}
+    container_name: nogi-clothes-classification-ui
+    ports:
+      - "13000:8080"  # HTTPポート
+      - "13001:8080"  # HTTPSポート
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ssl-certs:/app/certs  # SSL証明書用の永続ボリューム
+    environment:
+      - NODE_ENV=development
+      - VUE_APP_REDIRECT_URI=${VUE_APP_REDIRECT_URI:-https://192.168.207.227:13001}
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  ssl-certs:  # SSL証明書用の永続ボリュームを定義 

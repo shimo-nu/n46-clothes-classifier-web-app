@@ -24,6 +24,7 @@
     "ndarray-unpack": "^1.0.0",
     "onnxruntime-web": "^1.18.0",
     "pinia": "^2.1.7",
+    "vite-plugin-env-compatible": "^2.0.1",
     "vite-tsconfig-paths": "^4.3.2",
     "vue": "^3.4.29",
     "vue-class-component": "^8.0.0-rc.1",
