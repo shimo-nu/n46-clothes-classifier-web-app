@@ -1,25 +1,20 @@
 <template>
-  <v-container>
-    <v-row justify="center" align="center" style="height: 100vh;">
-      <!-- ローディングスピナー -->
-      <v-col cols="12" v-if="isLoading" class="text-center">
-        <v-progress-circular
-          indeterminate
-          color="primary"
-          size="64"
-        ></v-progress-circular>
-        <p>ロード中...</p>
-      </v-col>
-
-      <!-- ローディングが終わった後のコンテンツ -->
-      <v-col cols="12" v-else>
-        <v-card>
-          <v-card-title>コンテンツが表示されました！</v-card-title>
-          <v-card-subtitle>ここにメインコンテンツが表示されます。</v-card-subtitle>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+  <v-overlay
+    :model-value="isLoading"
+    class="align-center justify-center"
+    persistent
+  >
+    <v-card class="loading-container pa-4">
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        size="64"
+        width="8"
+      ></v-progress-circular>
+      <h2 class="loading-text mt-4">モデルを読み込み中...</h2>
+      <p class="loading-subtext">しばらくお待ちください</p>
+    </v-card>
+  </v-overlay>
 </template>
 
 <script>
@@ -34,7 +29,24 @@ export default {
 </script>
 
 <style scoped>
-.text-center {
+.loading-container {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   text-align: center;
+  min-width: 300px;
+}
+
+.loading-text {
+  color: #1976d2;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.loading-subtext {
+  color: #666;
+  font-size: 1rem;
 }
 </style>

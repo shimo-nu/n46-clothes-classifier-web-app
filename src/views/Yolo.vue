@@ -218,6 +218,47 @@ export default defineComponent({
       outputContainer.value!.appendChild(rect);
     };
 
+    const handleModelChange = async (modelType: string) => {
+      try {
+        console.log(`モデルを${modelType}に切り替えます...`);
+        
+        // 画像をリセット
+        handleImage.value = '';
+        if (inputCanvas.value) {
+          inputCanvas.value.width = 0;
+          inputCanvas.value.height = 0;
+        }
+        if (outputContainer.value) {
+          outputContainer.value.innerHTML = '';
+        }
+
+        // モデルの切り替え
+        if (modelType === 'uniform') {
+          console.log('制服モデルを読み込みます...');
+          classNames = uniform;
+          labelCategoryName.value = "制服識別";
+          MODEL_FILEPATH = '/data/uniform/best.onnx';
+        } else {
+          console.log('衣装モデルを読み込みます...');
+          classNames = music_costume;
+          labelCategoryName.value = "歌衣装識別";
+          MODEL_FILEPATH = '/data/music_costume/best.onnx';
+        }
+
+        // モデルの読み込み
+        const response = await fetch(MODEL_FILEPATH);
+        const modelFile = await response.arrayBuffer();
+        session.value = await runModelUtils.createModelCpu(modelFile);
+        const result = await runModelUtils.warmupModel(session.value, [1, 3, image_org_width, image_org_height]);
+        
+        if (result) {
+          console.log(`${modelType}モデルの読み込みが完了しました`);
+        }
+      } catch (error) {
+        console.error('モデルの切り替えに失敗しました:', error);
+      }
+    };
+
     loadModel();
 
     return {

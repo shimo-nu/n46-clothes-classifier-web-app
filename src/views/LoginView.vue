@@ -1,68 +1,94 @@
 <template>
-  <v-container class="login-container">
-    <v-row justify="center" align="center" style="height: 100vh">
-      <v-col cols="12" sm="8" md="6" lg="4">
-        <v-card class="login-card">
-          <v-card-title class="text-center text-h4 mb-4">
-            ログイン
-          </v-card-title>
-          <v-card-text>
-            <div v-if="!isAuthenticated" class="text-center">
-              <p class="mb-4">アノテーションツールを使用するにはログインが必要です。</p>
-              <v-btn
-                color="primary"
-                size="large"
-                block
-                @click="login"
-                :loading="isLoading"
-              >
-                ログイン
-              </v-btn>
-            </div>
-            <div v-else class="text-center">
-              <p class="mb-4">ログイン済みです。</p>
-              <v-btn
-                color="primary"
-                size="large"
-                block
-                @click="goToHome"
-              >
-                ホームへ
-              </v-btn>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+  <div class="login-container">
+    <h1>ログイン</h1>
+    <div v-if="error" class="error-message">
+      {{ error }}
+    </div>
+    <button @click="handleLogin" class="login-button" :disabled="isLoading">
+      {{ isLoading ? 'ログイン中...' : 'ログイン' }}
+    </button>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { useAuth0 } from '@auth0/auth0-vue'
-import { useRouter } from 'vue-router'
-import { computed } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
-const { loginWithRedirect, isAuthenticated, isLoading } = useAuth0()
+const { loginWithRedirect, isAuthenticated, error: auth0Error } = useAuth0()
 const router = useRouter()
+const route = useRoute()
+const isLoading = ref(false)
+const error = ref('')
 
-const login = () => {
-  loginWithRedirect()
+const handleLogin = async () => {
+  try {
+    isLoading.value = true
+    error.value = ''
+    
+    // 認証後のリダイレクト先を設定
+    const returnTo = route.query.returnTo as string || '/'
+    await loginWithRedirect({
+      appState: { returnTo }
+    })
+  } catch (e) {
+    error.value = 'ログイン中にエラーが発生しました。'
+    console.error('Login error:', e)
+  } finally {
+    isLoading.value = false
+  }
 }
 
-const goToHome = () => {
-  router.push('/clothes-classification')
-}
+onMounted(() => {
+  // すでに認証済みの場合はホームページにリダイレクト
+  if (isAuthenticated.value) {
+    const returnTo = route.query.returnTo as string || '/'
+    router.push(returnTo)
+  }
+  
+  // Auth0からのエラーがある場合は表示
+  if (auth0Error.value) {
+    error.value = auth0Error.value.message || '認証エラーが発生しました。'
+  }
+})
 </script>
 
 <style scoped>
 .login-container {
-  height: 100vh;
-  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
 }
 
-.login-card {
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.login-button {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.login-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.login-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #d32f2f;
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  background-color: #ffebee;
+  border-radius: 4px;
+  text-align: center;
 }
 </style> 

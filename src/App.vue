@@ -8,21 +8,48 @@ import { computed } from 'vue'
 const { logout, isAuthenticated, user } = useAuth0()
 
 const handleLogout = () => {
-  logout({ logoutParams: { returnTo: window.location.origin } })
+  logout({ logoutParams: { returnTo: window.location.origin + '/login' } })
 }
 </script>
 
 <template>
-  <NavMenu />
-  <div>
-    <div><h1>乃木坂あれこれ</h1></div>
-    <!-- <RouterLink to="/">Home</RouterLink>-->
-    <router-view />
-    <!-- <Yolo /> -->
+  <div id="app">
+    <nav v-if="isAuthenticated">
+      <router-link to="/">ホーム</router-link> |
+      <router-link to="/clothes-classification">制服分類</router-link> |
+      <router-link to="/music-costume-classification">衣装分類</router-link> |
+      <router-link to="/new-image">新規画像登録</router-link> |
+      <a href="#" @click.prevent="logout">ログアウト</a>
+    </nav>
+    <router-view/>
   </div>
-
 </template>
 
-<style scoped>
+<style>
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+}
 
+nav {
+  padding: 30px;
+}
+
+nav a {
+  font-weight: bold;
+  color: #2c3e50;
+  text-decoration: none;
+  margin: 0 10px;
+}
+
+nav a.router-link-exact-active {
+  color: #42b983;
+}
+
+nav a:hover {
+  color: #42b983;
+}
 </style>
