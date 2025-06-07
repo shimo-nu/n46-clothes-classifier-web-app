@@ -31,7 +31,11 @@ export const categoriesApi = {
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await api.get('/categories', { headers });
-      return response.data;
+      // APIレスポンスのデータ構造をTypeScriptインターフェースに合わせて変換
+      return response.data.map((category: any) => ({
+        ...category,
+        subCategories: category.subcategories
+      }));
     } catch (error) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 401) {

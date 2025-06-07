@@ -40,7 +40,19 @@ const fetchCategories = async () => {
     if (isAuthenticated.value) {
       token = await getAccessTokenSilently();
     }
-    categories.value = await categoriesApi.getCategories(token);
+    const result = await categoriesApi.getCategories(token);
+    console.log('Fetched categories:', JSON.stringify(result, null, 2));
+    // 各カテゴリのsubCategoriesの存在を確認
+    result.forEach((category, index) => {
+      console.log(`Category ${index}:`, {
+        id: category.id,
+        name: category.name,
+        hasSubCategories: !!category.subCategories,
+        subCategoriesLength: category.subCategories?.length || 0,
+        subCategories: category.subCategories
+      });
+    });
+    categories.value = result;
     } catch (e) {
     if (e instanceof Error) {
       error.value = e.message;

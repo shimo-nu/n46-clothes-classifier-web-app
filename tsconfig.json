@@ -14,7 +14,11 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "outDir": "dist",  // 出力先ディレクトリ
-    "rootDir": "src"  // ソースコードのルートディレクトリ
+    "rootDir": "src",  // ソースコードのルートディレクトリ
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": [

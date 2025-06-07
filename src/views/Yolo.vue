@@ -17,7 +17,7 @@
 <script lang="ts">
 
 import { useRouter } from 'vue-router';
-import { defineComponent, onMounted, ref } from 'vue';
+import { defineComponent, onMounted, ref, watch } from 'vue';
 import { Tensor, InferenceSession } from 'onnxruntime-web';
 import ndarray from 'ndarray';
 import ops from 'ndarray-ops';
@@ -82,7 +82,20 @@ export default defineComponent({
       }
     };
 
-
+    // Watch for changes in classificationType
+    watch(() => props.classificationType, async (newType) => {
+      console.log(`Classification type changed to: ${newType}`);
+      // Reset image and canvas
+      handleImage.value = '';
+      if (inputCanvas.value) {
+        inputCanvas.value.width = 0;
+        inputCanvas.value.height = 0;
+      }
+      if (outputContainer.value) {
+        outputContainer.value.innerHTML = '';
+      }
+      await loadModel();
+    });
 
     const goToAnnotation = (handleImage, labelCategoryName) => {
       router.push({  // useRouterフックから取得したrouterを使用
@@ -97,9 +110,9 @@ export default defineComponent({
       });
     };
 
-
-    onMounted(() => {
+    onMounted(async () => {
       console.log("onMounted");
+      await loadModel();
     });
 
     const handleImageUploaded = async (imageData: string) => {
@@ -275,16 +288,34 @@ export default defineComponent({
 </script>
 
 <style>
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 #webcam-container {
   position: relative;
+  width: 640px;
+  height: 640px;
+  margin: 0 auto;
 }
 
 #inputCanvas {
   z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 [ref="outputContainer"] {
   z-index: 2;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
-
 </style>
