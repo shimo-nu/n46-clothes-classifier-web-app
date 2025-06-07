@@ -5,6 +5,7 @@ import Yolo from '../views/Yolo.vue'
 import Annotation from '../views/Annotation.vue'
 import NewImageView from '../views/NewImageView.vue'
 import LoginView from '../views/LoginView.vue'
+import CategoriesView from '../views/CategoriesView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,6 +19,12 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView
+    },
+    {
+      path: '/categories',
+      name: 'categories',
+      component: CategoriesView,
+      beforeEnter: authGuard
     },
     {
       path: '/clothes-classification',
