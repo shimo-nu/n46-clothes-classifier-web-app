@@ -73,8 +73,9 @@ onMounted(() => {
 <style scoped>
 .categories-container {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+  width: 95%;
 }
 
 h1 {
@@ -94,41 +95,58 @@ h1 {
 
 .categories-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .category-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #eef2f7;
+}
+
+.category-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 h2 {
   color: #2c3e50;
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #eee;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 2px solid #e1e8ef;
+  font-size: 1.4rem;
 }
 
 .subcategories-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.8rem;
+  padding: 0.5rem;
 }
 
 .subcategory-item {
   background: #f8f9fa;
-  padding: 0.5rem;
-  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
   font-size: 0.9rem;
   text-align: center;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+  color: #495057;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .subcategory-item:hover {
-  background: #e9ecef;
+  background: #007bff;
+  color: white;
   cursor: pointer;
+  border-color: #0056b3;
 }
 </style>

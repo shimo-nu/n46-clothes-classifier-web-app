@@ -1,5 +1,30 @@
 <template>
   <v-container class="annotation-tool">
+    <v-alert
+      v-if="!isAuthenticated"
+      color="warning"
+      text
+      class="mb-4"
+    >
+      アノテーションを送信するにはログインが必要です。
+      <v-btn
+        color="warning"
+        class="ml-4"
+        @click="loginWithRedirect"
+      >
+        ログイン
+      </v-btn>
+    </v-alert>
+
+    <v-alert
+      v-else
+      color="success"
+      text
+      class="mb-4"
+    >
+      {{ user?.name }}としてログイン中
+    </v-alert>
+
     <v-row v-if="isNewAnnotation">
       <v-col cols="12">
         <v-card class="mx-auto" max-width="600">
@@ -30,7 +55,6 @@
     </v-row>
 
     <v-row v-if="!isNewAnnotation || (isNewAnnotation && uploadedImage)">
-      <!-- 選択された画像とラベルクラスを表示 -->
       <v-col cols="12" md="6">
         <v-card class="mx-auto" max-width="400">
           <v-img :src="displayImage" alt="Annotatable Image"></v-img>
@@ -41,7 +65,6 @@
         </v-card>
       </v-col>
 
-      <!-- ラベルの種類を選択するセレクション -->
       <v-col cols="12" md="6">
         <v-select
           v-model="selectedCategory"
@@ -51,7 +74,6 @@
         ></v-select>
       </v-col>
 
-      <!-- ラベルセレクション -->
       <v-col cols="12" md="6">
         <v-select
           v-model="selectedLabel"
@@ -61,22 +83,21 @@
       </v-col>
     </v-row>
 
-    <!-- Image annotation area -->
     <v-row v-if="!isNewAnnotation || (isNewAnnotation && uploadedImage)">
       <v-col cols="12" md="8">
         <div class="image-container" @mousedown="startDrawing" @mousemove="draw" @mouseup="endDrawing" @mouseleave="endDrawing">
           <img :src="displayImage" alt="Annotatable Image" class="annotatable-image"/>
           <template v-for="(box, index) in boxes" :key="index">
-            <!-- リサイズ中のボックス -->
             <div
               v-if="isResizing && currentBox === box"
-              class="bounding-box resizable is-resizing"
+              class="bounding-box resizable"
               :style="{ 
-                left: tempBox.left + 'px', 
-                top: tempBox.top + 'px', 
-                width: tempBox.width + 'px', 
-                height: tempBox.height + 'px', 
-                borderColor: box.color 
+                left: box.left + 'px', 
+                top: box.top + 'px', 
+                width: box.width + 'px', 
+                height: box.height + 'px', 
+                borderColor: box.color,
+                opacity: 0.8
               }"
             >
               <div class="label-container">
@@ -84,7 +105,6 @@
               </div>
               <div class="resize-handle"></div>
             </div>
-            <!-- 通常のボックス -->
             <div
               v-else
               class="bounding-box resizable"
@@ -112,7 +132,6 @@
         </div>
       </v-col>
 
-      <!-- Annotated Boxes Display -->
       <v-col cols="12" md="4">
         <v-card class="mx-auto" max-width="600">
           <v-card-title>Annotated Boxes</v-card-title>
@@ -127,7 +146,14 @@
               </v-list-item-content>
             </v-list-item>
           </v-list>
-          <v-btn color="primary" @click="submitAnnotations">送信</v-btn>
+          <v-btn 
+            color="primary" 
+            @click="submitAnnotations"
+            :loading="isSubmitting"
+            :disabled="isSubmitting || !isAuthenticated"
+          >
+            {{ isSubmitting ? '送信中...' : '送信' }}
+          </v-btn>
         </v-card>
       </v-col>
     </v-row>
@@ -139,6 +165,7 @@ import { ref, onMounted, computed } from 'vue';
 import { uniform, music_costume } from '../data/yolo_classes';
 import { ENDPOINTS } from '../api/endpoints';
 import axios from 'axios';
+import { useAuth0 } from '@auth0/auth0-vue';
 
 export default {
   props: {
@@ -156,9 +183,11 @@ export default {
     }
   },
   setup(props) {
+    const { getAccessTokenSilently, loginWithRedirect, isAuthenticated, user } = useAuth0();
     const selectedCategory = ref('');
     const currentLabels = ref([]);
     const selectedLabel = ref('');
+    const isSubmitting = ref(false);
     const labelCategories = {
       '制服識別': uniform,
       '歌衣装識別': music_costume
@@ -181,8 +210,11 @@ export default {
     const resizeStartX = ref(0);
     const resizeStartY = ref(0);
 
+    const displayImage = computed(() => {
+      return props.isNewAnnotation ? uploadedImage.value : props.handleImage;
+    });
+
     const labelColorMap = {
-      // 制服ラベル用の色
       '1_uniform': '#e6194b', '2_uniform': '#3cb44b', '3_uniform': '#ffe119', '4_uniform': '#4363d8',
       '5_uniform': '#f58231', '6_uniform': '#911eb4', '7_uniform': '#46f0f0', '8_uniform': '#f032e6',
       '9_uniform': '#bcf60c', '10_uniform': '#fabebe', '11_uniform': '#008080', '12_uniform': '#e6beff',
@@ -202,16 +234,10 @@ export default {
       '25_music_costume': '#b19cd9', '26_music_costume': '#77dd77', '27_music_costume': '#ff6961', '28_music_costume': '#cfcfc4',
       '29_music_costume': '#aec6cf', '30_music_costume': '#b39eb5', '31_music_costume': '#ff7f50', '32_music_costume': '#b2fba5',
       '33_music_costume': '#ffb347', '34_music_costume': '#b19cd9', '35_music_costume': '#77dd77',
-      // デフォルト色
       'default': 'red'
     };
 
-    const displayImage = computed(() => {
-      return props.isNewAnnotation ? uploadedImage.value : props.handleImage;
-    });
-
     onMounted(() => {
-      // 新規アノテーションの場合でも、デフォルトで制服カテゴリを選択
       if (props.isNewAnnotation) {
         selectedCategory.value = "制服識別";
         currentLabels.value = uniform;
@@ -226,8 +252,6 @@ export default {
           currentLabels.value = music_costume;
           selectedLabel.value = currentLabels.value.length > 0 ? currentLabels.value[0] : '';
         }
-      } else {
-        console.error('ラベルカテゴリーが存在しません。');
       }
     });
 
@@ -241,7 +265,6 @@ export default {
       } else {
         currentLabels.value = [];
         selectedLabel.value = '';
-        console.error('選択されたラベルカテゴリーが存在しません。');
       }
     };
 
@@ -251,8 +274,6 @@ export default {
         isDrawing.value = true;
         startX.value = event.clientX - rect.left;
         startY.value = event.clientY - rect.top;
-        console.log(startX);
-        console.log(startY);
       }
     };
 
@@ -271,17 +292,6 @@ export default {
         const newLeft = x - offsetX.value;
         const newTop = y - offsetY.value;
         
-        console.log('During Drag:', {
-          x,
-          y,
-          offsetX: offsetX.value,
-          offsetY: offsetY.value,
-          newLeft,
-          newTop,
-          currentLeft: currentBox.value.left,
-          currentTop: currentBox.value.top
-        });
-        
         const containerWidth = rect.width;
         const containerHeight = rect.height;
         currentBox.value.left = Math.max(0, Math.min(newLeft, containerWidth - currentBox.value.width));
@@ -292,18 +302,11 @@ export default {
         const y = event.clientY - rect.top;
         
         if (resizeDirection.value === 'se') {
-          const newWidth = x - currentBox.value.left;
-          const newHeight = y - currentBox.value.top;
+          const newWidth = Math.max(10, Math.min(x - currentBox.value.left, rect.width - currentBox.value.left));
+          const newHeight = Math.max(10, Math.min(y - currentBox.value.top, rect.height - currentBox.value.top));
           
-          const maxWidth = rect.width - currentBox.value.left;
-          const maxHeight = rect.height - currentBox.value.top;
-          
-          if (newWidth >= 10) {
-            currentBox.value.width = Math.min(newWidth, maxWidth);
-          }
-          if (newHeight >= 10) {
-            currentBox.value.height = Math.min(newHeight, maxHeight);
-          }
+          currentBox.value.width = newWidth;
+          currentBox.value.height = newHeight;
         }
       }
     };
@@ -328,13 +331,13 @@ export default {
         }
         isDragging.value = false;
         currentBox.value = null;
-      } else if (isResizing.value) {
-        if (currentBox.value) {
-          currentBox.value.width = Math.round(currentBox.value.width);
-          currentBox.value.height = Math.round(currentBox.value.height);
-        }
-        isResizing.value = false;
-        currentBox.value = null;
+        } else if (isResizing.value) {
+          if (currentBox.value) {
+            currentBox.value.width = Math.round(currentBox.value.width);
+            currentBox.value.height = Math.round(currentBox.value.height);
+          }
+          isResizing.value = false;
+          currentBox.value = null;
       }
     };
 
@@ -347,45 +350,19 @@ export default {
         resizeStartY.value = rect.top;
         offsetX.value = event.clientX - (rect.left + box.left);
         offsetY.value = event.clientY - (rect.top + box.top);
-        console.log('Start Drag:', {
-          boxLeft: box.left,
-          boxTop: box.top,
-          clientX: event.clientX,
-          clientY: event.clientY,
-          rectLeft: rect.left,
-          rectTop: rect.top,
-          offsetX: offsetX.value,
-          offsetY: offsetY.value
-        });
       }
     };
 
     const startResizing = (box, event) => {
-      const rect = event.target.closest('.image-container').getBoundingClientRect();
+      event.preventDefault();
+      event.stopPropagation();
       isResizing.value = true;
       currentBox.value = box;
       resizeDirection.value = 'se';
-      offsetX.value = event.clientX - (rect.left + box.left + box.width);
-      offsetY.value = event.clientY - (rect.top + box.top + box.height);
     };
 
     const deleteBox = (index) => {
       boxes.value.splice(index, 1);
-    };
-
-    const submitAnnotations = async () => {
-      try {
-        const payload = {
-          image: props.handleImage,
-          labelCategory: selectedCategory.value,
-          boxes: boxes.value
-        };
-        const response = await axios.post(ENDPOINTS.ANNOTATIONS, payload);
-        alert('送信が完了しました');
-      } catch (error) {
-        alert('送信に失敗しました');
-        console.error(error);
-      }
     };
 
     const handleFileSelect = (event) => {
@@ -408,6 +385,81 @@ export default {
           uploadedImage.value = e.target.result;
         };
         reader.readAsDataURL(file);
+      }
+    };
+
+    const submitAnnotations = async () => {
+      if (isSubmitting.value) return;
+      
+      if (!isAuthenticated.value) {
+        alert('ログインが必要です');
+        await loginWithRedirect({
+          appState: { returnTo: window.location.pathname }
+        });
+        return;
+      }
+      
+      isSubmitting.value = true;
+      try {
+        if (!boxes.value.length) {
+          alert('少なくとも1つのバウンディングボックスを作成してください。');
+          return;
+        }
+
+        const token = await getAccessTokenSilently();
+        if (!token) {
+          throw new Error('認証トークンが取得できませんでした。再度ログインしてください。');
+        }
+
+        const imageData = props.isNewAnnotation ? uploadedImage.value : props.handleImage;
+        const base64Image = imageData.split(',')[1] || imageData;
+
+        const selectedLabels = boxes.value.map(box => box.label);
+        const subcategoryIds = [...new Set(selectedLabels.map(label => {
+          const match = label.match(/^(\d+)_/);
+          return match ? parseInt(match[1]) : null;
+        }))].filter(id => id !== null);
+
+        const payload = {
+          image: base64Image,
+          subcategoryIds: subcategoryIds,
+          boxes: boxes.value.map(box => ({
+            left: Math.round(box.left),
+            top: Math.round(box.top),
+            width: Math.round(box.width),
+            height: Math.round(box.height),
+            label: box.label,
+            color: box.color
+          }))
+        };
+
+        const response = await axios.post(ENDPOINTS.ANNOTATIONS, payload, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('Response:', response.status, response.statusText);
+        alert('送信が完了しました');
+      } catch (error) {
+        console.error('Error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          message: error.response?.data?.message,
+          url: ENDPOINTS.ANNOTATIONS
+        });
+
+        if (error.response?.status === 403) {
+          alert('アクセス権限がありません。再度ログインしてください。');
+        } else if (error.response?.status === 401) {
+          alert('認証エラーが発生しました。再度ログインしてください。');
+        } else if (error.code === 'ERR_NETWORK') {
+          alert('ネットワークエラーが発生しました。インターネット接続を確認してください。');
+        } else {
+          alert('送信に失敗しました: ' + (error.response?.data?.message || error.message || '不明なエラー'));
+        }
+      } finally {
+        isSubmitting.value = false;
       }
     };
 
@@ -439,7 +491,13 @@ export default {
       handleFileSelect,
       handleFileDrop,
       resizeStartX,
-      resizeStartY
+      resizeStartY,
+      tempBox,
+      currentBox,
+      isAuthenticated,
+      user,
+      loginWithRedirect,
+      isSubmitting
     };
   }
 };
