@@ -3,9 +3,18 @@ import { RouterLink, RouterView } from 'vue-router'
 import Yolo from './views/Yolo.vue'
 import NavMenu from './components/NavMenu.vue'
 import { useAuth0 } from '@auth0/auth0-vue'
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
+import { useRoles } from './composables/useRoles'
 
-const { logout, isAuthenticated, user } = useAuth0()
+const { logout, isAuthenticated } = useAuth0()
+const { roles } = useRoles()
+
+const isStaff = computed(() => roles.value.includes('staff'))
+
+watchEffect(() => {
+  console.log('[App] roles', roles.value)
+  console.log('[App] isStaff', isStaff.value)
+})
 
 const handleLogout = () => {
   logout({ logoutParams: { returnTo: window.location.origin + '/login' } })
@@ -18,10 +27,15 @@ const handleLogout = () => {
       <router-link to="/">ホーム</router-link> |
       <router-link to="/clothes-classification">制服分類</router-link> |
       <router-link to="/music-costume-classification">衣装分類</router-link> |
-      <router-link to="/new-image">新規画像登録</router-link> |
-      <a href="#" @click.prevent="logout">ログアウト</a>
+      <router-link to="/new-image">新規画像登録</router-link>
+      | <router-link to="/profile">プロフィール</router-link>
+      <span v-if="isStaff">
+        | <router-link to="/annotations">アノテーション一覧</router-link> |
+        <router-link to="/training">学習</router-link>
+      </span>
+      | <a href="#" @click.prevent="logout">ログアウト</a>
     </nav>
-    <router-view/>
+    <router-view />
   </div>
 </template>
 
