@@ -26,6 +26,7 @@ const handleLogout = () => {
       <router-link to="/clothes-classification">制服分類</router-link> |
       <router-link to="/music-costume-classification">衣装分類</router-link> |
       <router-link to="/new-image">新規画像登録</router-link>
+      | <router-link to="/profile">プロフィール</router-link>
       <span v-if="isStaff">
         | <router-link to="/annotations">アノテーション一覧</router-link> |
         <router-link to="/training">学習</router-link>

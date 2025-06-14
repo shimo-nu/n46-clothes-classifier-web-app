@@ -10,6 +10,7 @@ import CategoriesView from '../views/CategoriesView.vue'
 import AnnotationList from '../views/AnnotationList.vue'
 import TrainingView from '../views/TrainingView.vue'
 import Unauthorized from '../views/Unauthorized.vue'
+import ProfileView from '../views/ProfileView.vue'
 
 const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM || 'https://example.com/roles'
 
@@ -84,6 +85,12 @@ const router = createRouter({
       path: '/new-image',
       name: 'new-image',
       component: NewImageView,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: ProfileView,
       beforeEnter: authGuard
     },
     {
