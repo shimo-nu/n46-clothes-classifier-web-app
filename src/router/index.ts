@@ -16,10 +16,20 @@ const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM
 
 function roleGuard(requiredRoles: string[]) {
   return (to: any, from: any, next: any) => {
-    const { isAuthenticated, isLoading, user } = useAuth0()
+    const { isAuthenticated, isLoading, user, getAccessTokenSilently } = useAuth0()
 
-    const verify = () => {
-      const roles = user.value?.[rolesClaim] || []
+    const verify = async () => {
+      let roles: any[] = (user.value as any)?.[rolesClaim] || []
+      if (roles.length === 0 && isAuthenticated.value) {
+        try {
+          const token = await getAccessTokenSilently()
+          const decoded = JSON.parse(atob(token.split('.')[1]))
+          roles = decoded[rolesClaim] || []
+        } catch (e) {
+          console.error('Failed to load roles', e)
+        }
+      }
+
       if (isAuthenticated.value && requiredRoles.some((r) => roles.includes(r))) {
         return next()
       }

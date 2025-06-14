@@ -15,15 +15,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useAuth0 } from '@auth0/auth0-vue'
+import { useRoles } from '../composables/useRoles'
 
-const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM
 const { user } = useAuth0()
-
-const roles = computed(() => {
-  return (user.value as any)?.[rolesClaim] || []
-})
+const { roles } = useRoles()
 
 // TODO: Replace with values from backend when available
 const annotationRemaining = ref('--')

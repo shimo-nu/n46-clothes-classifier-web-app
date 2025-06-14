@@ -4,15 +4,12 @@ import Yolo from './views/Yolo.vue'
 import NavMenu from './components/NavMenu.vue'
 import { useAuth0 } from '@auth0/auth0-vue'
 import { computed } from 'vue'
+import { useRoles } from './composables/useRoles'
 
-const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM
+const { logout, isAuthenticated } = useAuth0()
+const { roles } = useRoles()
 
-const { logout, isAuthenticated, user } = useAuth0()
-
-const isStaff = computed(() => {
-  const roles: any[] = (user.value as any)?.[rolesClaim] || []
-  return roles.includes('staff')
-})
+const isStaff = computed(() => roles.value.includes('staff'))
 
 const handleLogout = () => {
   logout({ logoutParams: { returnTo: window.location.origin + '/login' } })
