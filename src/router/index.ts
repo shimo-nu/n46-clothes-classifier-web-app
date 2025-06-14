@@ -12,7 +12,7 @@ import TrainingView from '../views/TrainingView.vue'
 import Unauthorized from '../views/Unauthorized.vue'
 import ProfileView from '../views/ProfileView.vue'
 
-const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM || 'https://example.com/roles'
+const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM
 
 function roleGuard(requiredRoles: string[]) {
   return (to: any, from: any, next: any) => {

@@ -18,7 +18,7 @@
 import { computed, ref } from 'vue'
 import { useAuth0 } from '@auth0/auth0-vue'
 
-const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM || 'https://example.com/roles'
+const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM
 const { user } = useAuth0()
 
 const roles = computed(() => {

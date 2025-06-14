@@ -5,7 +5,7 @@ import NavMenu from './components/NavMenu.vue'
 import { useAuth0 } from '@auth0/auth0-vue'
 import { computed } from 'vue'
 
-const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM || 'https://example.com/roles'
+const rolesClaim = import.meta.env.VITE_AUTH0_ROLES_CLAIM
 
 const { logout, isAuthenticated, user } = useAuth0()
 
