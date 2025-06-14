@@ -18,13 +18,23 @@ function roleGuard(requiredRoles: string[]) {
   return (to: any, from: any, next: any) => {
     const { isAuthenticated, isLoading, user, getAccessTokenSilently } = useAuth0()
 
+    const decodeToken = (token: string) => {
+      try {
+        const parts = token.split('.')
+        if (parts.length < 2) return null
+        return JSON.parse(atob(parts[1]))
+      } catch {
+        return null
+      }
+    }
+
     const verify = async () => {
       let roles: any[] = (user.value as any)?.[rolesClaim] || []
       if (roles.length === 0 && isAuthenticated.value) {
         try {
           const token = await getAccessTokenSilently()
-          const decoded = JSON.parse(atob(token.split('.')[1]))
-          roles = decoded[rolesClaim] || []
+          const decoded = decodeToken(token)
+          roles = decoded?.[rolesClaim] || []
         } catch (e) {
           console.error('Failed to load roles', e)
         }
