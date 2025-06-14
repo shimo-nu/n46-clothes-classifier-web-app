@@ -37,3 +37,16 @@ npm run build
 ```sh
 npm run lint
 ```
+
+## Environment Variables
+
+Create a `.env` file with the following keys:
+
+```sh
+VITE_API_BASE_URL=<backend url>
+VITE_AUTH0_DOMAIN=<auth0 domain>
+VITE_AUTH0_CLIENT_ID=<auth0 client id>
+VITE_AUTH0_AUDIENCE=<auth0 audience>
+VITE_AUTH0_REDIRECT_URI=<redirect uri>
+VITE_AUTH0_ROLES_CLAIM=<roles claim key>
+```
