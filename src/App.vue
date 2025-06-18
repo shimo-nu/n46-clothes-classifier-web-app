@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import Yolo from './views/Yolo.vue'
-import NavMenu from './components/NavMenu.vue'
+// Imports for views are handled by the router. Remove unused imports.
 import { useAuth0 } from '@auth0/auth0-vue'
 import { computed, watchEffect } from 'vue'
 import { useRoles } from './composables/useRoles'
