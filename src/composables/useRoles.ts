@@ -13,6 +13,7 @@ export function useRoles() {
     if (!list && isAuthenticated.value) {
       try {
         const token = await getAccessTokenSilently()
+        console.log('[useRoles] got access token', token)
         const decoded = JSON.parse(atob(token.split('.')[1]))
         list = decoded[rolesClaim] || []
         console.log('[useRoles] roles from token', list)
