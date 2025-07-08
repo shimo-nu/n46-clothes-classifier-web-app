@@ -1,8 +1,8 @@
 <template>
   <div class="webcam-component">
     <video ref="videoElement" autoplay  muted playsinline></video>
-    <button @click="startCamera">Start Camera</button>
-    <button @click="stopCamera">Stop Camera</button>
+    <!-- <button @click="startCamera">Start Camera</button>
+    <button @click="stopCamera">Stop Camera</button> -->
     <div>
       <label class="inputs">
         UPLOAD IMAGE

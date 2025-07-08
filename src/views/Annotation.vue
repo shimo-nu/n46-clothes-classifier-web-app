@@ -89,31 +89,13 @@
           <img :src="displayImage" alt="Annotatable Image" class="annotatable-image"/>
           <template v-for="(box, index) in boxes" :key="index">
             <div
-              v-if="isResizing && currentBox === box"
-              class="bounding-box resizable"
+              :class="['bounding-box', { 'resizable': true, 'selected': box === selectedBox }]"
               :style="{ 
                 left: box.left + 'px', 
                 top: box.top + 'px', 
                 width: box.width + 'px', 
                 height: box.height + 'px', 
-                borderColor: box.color,
-                opacity: 0.8
-              }"
-            >
-              <div class="label-container">
-                <span class="label">{{ box.label }}</span>
-              </div>
-              <div class="resize-handle"></div>
-            </div>
-            <div
-              v-else
-              class="bounding-box resizable"
-              :style="{ 
-                left: box.left + 'px', 
-                top: box.top + 'px', 
-                width: box.width + 'px', 
-                height: box.height + 'px', 
-                borderColor: box.color 
+                borderColor: box.color
               }"
               @mousedown.stop="startDragging(box, $event)"
             >
@@ -161,7 +143,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { uniform, music_costume } from '../data/yolo_classes';
 import { ENDPOINTS } from '../api/endpoints';
 import axios from 'axios';
@@ -201,6 +183,7 @@ export default {
     const currentWidth = ref(0);
     const currentHeight = ref(0);
     const currentBox = ref(null);
+    const selectedBox = ref(null);
     const offsetX = ref(0);
     const offsetY = ref(0);
     const resizeDirection = ref('');
@@ -209,6 +192,7 @@ export default {
     const tempBox = ref({ left: 0, top: 0, width: 0, height: 0 });
     const resizeStartX = ref(0);
     const resizeStartY = ref(0);
+    const copiedBox = ref(null);
 
     const displayImage = computed(() => {
       return props.isNewAnnotation ? uploadedImage.value : props.handleImage;
@@ -237,7 +221,35 @@ export default {
       'default': 'red'
     };
 
+    const handleCopy = () => {
+      if (selectedBox.value) {
+        copiedBox.value = { ...selectedBox.value };
+      }
+    };
+
+    const handlePaste = () => {
+      if (copiedBox.value) {
+        const newBox = {
+          ...copiedBox.value,
+          left: copiedBox.value.left + 10,
+          top: copiedBox.value.top + 10,
+        };
+        boxes.value.push(newBox);
+        selectedBox.value = newBox;
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey && event.key === 'c') {
+        handleCopy();
+      }
+      if (event.ctrlKey && event.key === 'v') {
+        handlePaste();
+      }
+    };
+
     onMounted(() => {
+      window.addEventListener('keydown', handleKeyDown);
       if (props.isNewAnnotation) {
         selectedCategory.value = "制服識別";
         currentLabels.value = uniform;
@@ -255,6 +267,10 @@ export default {
       }
     });
 
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeyDown);
+    });
+
     const updateLabels = () => {
       if (selectedCategory.value === '制服識別') {
         currentLabels.value = uniform;
@@ -269,6 +285,7 @@ export default {
     };
 
     const startDrawing = (event) => {
+      selectedBox.value = null;
       if (!isDrawing.value && !isDragging.value && !isResizing.value) {
         const rect = event.target.getBoundingClientRect();
         isDrawing.value = true;
@@ -313,14 +330,16 @@ export default {
 
     const endDrawing = () => {
       if (isDrawing.value) {
-        boxes.value.push({
+        const newBox = {
           left: Math.round(startX.value),
           top: Math.round(startY.value),
           width: Math.round(currentWidth.value),
           height: Math.round(currentHeight.value),
           label: selectedLabel.value,
           color: labelColorMap[selectedLabel.value] || labelColorMap['default']
-        });
+        };
+        boxes.value.push(newBox);
+        selectedBox.value = newBox;
         isDrawing.value = false;
         currentWidth.value = 0;
         currentHeight.value = 0;
@@ -343,6 +362,7 @@ export default {
 
     const startDragging = (box, event) => {
       if (!isResizing.value) {
+        selectedBox.value = box;
         const rect = event.target.closest('.image-container').getBoundingClientRect();
         isDragging.value = true;
         currentBox.value = box;
@@ -356,12 +376,16 @@ export default {
     const startResizing = (box, event) => {
       event.preventDefault();
       event.stopPropagation();
+      selectedBox.value = box;
       isResizing.value = true;
       currentBox.value = box;
       resizeDirection.value = 'se';
     };
 
     const deleteBox = (index) => {
+      if (boxes.value[index] === selectedBox.value) {
+        selectedBox.value = null;
+      }
       boxes.value.splice(index, 1);
     };
 
@@ -412,7 +436,6 @@ export default {
         }
 
         const imageData = props.isNewAnnotation ? uploadedImage.value : props.handleImage;
-        const base64Image = imageData.split(',')[1] || imageData;
 
         const selectedLabels = boxes.value.map(box => box.label);
         const subcategoryIds = [...new Set(selectedLabels.map(label => {
@@ -421,7 +444,7 @@ export default {
         }))].filter(id => id !== null);
 
         const payload = {
-          image: base64Image,
+          image: imageData,
           subcategoryIds: subcategoryIds,
           boxes: boxes.value.map(box => ({
             left: Math.round(box.left),
@@ -494,6 +517,7 @@ export default {
       resizeStartY,
       tempBox,
       currentBox,
+      selectedBox,
       isAuthenticated,
       user,
       loginWithRedirect,
@@ -545,6 +569,10 @@ export default {
   position: absolute;
   border: 2px solid;
   cursor: move;
+}
+
+.bounding-box.selected {
+  box-shadow: 0 0 5px 3px rgba(255, 255, 0, 0.7);
 }
 
 .label-container {
